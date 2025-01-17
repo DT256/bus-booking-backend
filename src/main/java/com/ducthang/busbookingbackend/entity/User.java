@@ -1,5 +1,6 @@
 package com.ducthang.busbookingbackend.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
@@ -20,6 +21,7 @@ public class User {
     private ObjectId id;
 
     private String name;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime dataOfBirth;
     private Boolean gender;
 

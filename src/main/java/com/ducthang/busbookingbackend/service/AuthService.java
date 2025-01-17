@@ -23,7 +23,7 @@ public class AuthService {
 
     // Đăng ký tài khoản mới
     public String register(User user) {
-        if (userRepository.existsById(user.getEmail())) {
+        if (userRepository.existsByEmail(user.getEmail())) {
             return "Email already exists.";
         }
 //        user.setActive(false);
