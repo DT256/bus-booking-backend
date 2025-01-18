@@ -1,0 +1,87 @@
+submit
+    mail
+    pass
+fetch sendOpt
+sussces
+    form opt
+    submit
+        fetch validate opt(mail, optNhap)
+        susccess
+            fetch register(mail, pass)
+            suscess
+                login
+
+        error
+            thử lại
+
+
+
+
+submit
+    pass
+    mail
+    fetch register
+        findEamil
+        sendOPT
+
+        sucess
+            fetch validateOPTRegister( mail, pass)
+            sucess
+                luu thong tin
+
+submit
+    UserCreate
+    fetch register(UserCreate)
+        findEamil
+        sendOPT
+
+        sucess
+            form inputOTP
+            submit
+                fetch validateOPTRegister(UserCreate)
+                sucess
+                    userRepo.save(User)
+                error
+                    thong bao sai nhap lai
+
+      checkEmail
+
+submit
+    UserCreate
+    checkEmail
+    dungs
+        formOPT
+        fetch sendOPT(email)
+        submit
+                        fetch validateOPT(email, OPTInput)
+                        suscess
+                            fetch resgister(UserCreate)
+
+    UserCreate
+    fetch register(UserCreate)
+        findEmail
+        Luu  status(Inactive)
+        suscess
+            formOPT
+            fetch sendOPT(email)
+            submit
+                fetch validateOPT(email, OPTInput)
+                suscess
+                    fetch acviteAcc(email)
+
+
+
+forgot pass
+nhap mail
+submit
+    var mail
+    load form OTP
+    fetch sendOPT(mail)
+
+    submit(opt)      GUI lai ( fetch sendOTP)
+        fetch validate(email, OTPInput)
+            suscess
+                form NewPass
+                submit
+                    fetch forgotPass(mail, new pass)
+
