@@ -1,7 +1,11 @@
 package com.ducthang.busbookingbackend.controller;
 
+import com.ducthang.busbookingbackend.dto.auth.request.UserLoginRequest;
+import com.ducthang.busbookingbackend.dto.auth.request.UserResetPasswordRequest;
+import com.ducthang.busbookingbackend.dto.auth.response.AuthResponse;
 import com.ducthang.busbookingbackend.entity.User;
 import com.ducthang.busbookingbackend.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +19,12 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
+    @GetMapping("/check-email/{email}")
+    public ResponseEntity<AuthResponse> checkEmail(@PathVariable String email) {
+        authService.checkEmail();
+    }
+
+
     // Đăng ký tài khoản mới
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody User user) {
@@ -27,12 +37,8 @@ public class AuthController {
 
     // Đăng nhập
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestParam String email, @RequestParam String password) {
-        String result = authService.login(email, password);
-        if (result.startsWith("Invalid credentials") || result.startsWith("Account is not activated")) {
-            return ResponseEntity.badRequest().body(result);
-        }
-        return ResponseEntity.ok(result);
+    public AuthResponse login(@RequestBody @Valid UserLoginRequest request) {
+        return authService.login(request);
     }
 
     // Kích hoạt tài khoản qua OTP
@@ -47,12 +53,9 @@ public class AuthController {
 
     // Quên mật khẩu và gửi OTP
     @PostMapping("/forgot-password")
-    public ResponseEntity<String> forgotPassword(@RequestParam String email) throws MessagingException {
-        String result = authService.forgotPassword(email);
-        if (result.startsWith("Email not found")) {
-            return ResponseEntity.badRequest().body(result);
-        }
-        return ResponseEntity.ok(result);
+    public AuthResponse resetPassword(@RequestBody @Valid UserResetPasswordRequest request)
+    {
+        return authService.forgotPassword(request);
     }
 }
 

@@ -23,7 +23,7 @@ public class User {
     private String name;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime dataOfBirth;
-    private Boolean gender;
+    private String gender;
 
     private String username;
 
