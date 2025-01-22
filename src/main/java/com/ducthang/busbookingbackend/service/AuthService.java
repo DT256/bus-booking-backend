@@ -6,7 +6,6 @@ import com.ducthang.busbookingbackend.dto.auth.request.UserResetPasswordRequest;
 import com.ducthang.busbookingbackend.dto.auth.response.AuthResponse;
 import com.ducthang.busbookingbackend.entity.Role;
 import com.ducthang.busbookingbackend.entity.User;
-import com.ducthang.busbookingbackend.entity.UserStatus;
 import com.ducthang.busbookingbackend.exception.AppException;
 import com.ducthang.busbookingbackend.exception.ErrorCode;
 import com.ducthang.busbookingbackend.repository.UserRepository;

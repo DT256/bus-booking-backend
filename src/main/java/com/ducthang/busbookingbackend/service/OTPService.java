@@ -1,5 +1,7 @@
 package com.ducthang.busbookingbackend.service;
 
+import jakarta.mail.MessagingException;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
@@ -16,12 +18,22 @@ public class OTPService {
     // Thời gian hết hạn của OTP (ví dụ 5 phút)
     private final long OTP_EXPIRATION_TIME = TimeUnit.MINUTES.toMillis(5);
 
+    @Autowired
+    EmailService emailService;
+
     // Tạo OTP và gửi qua email
     public String generateOtp(String email) {
         String otp = String.valueOf(new Random().nextInt(999999 - 100000) + 100000); // 6 chữ số
         otpStore.put(email, otp);  // Lưu OTP
         otpExpirationStore.put(email, System.currentTimeMillis() + OTP_EXPIRATION_TIME); // Lưu thời gian hết hạn
         return otp;
+    }
+
+    public String sendOtp(String email){
+        String otp = this.generateOtp(email);
+        boolean isEmailSent = emailService.sendOtp(email,otp);
+        return isEmailSent ? "Send mail successfully" : "Send mail failed";
+
     }
 
     // Kiểm tra OTP có hợp lệ không
