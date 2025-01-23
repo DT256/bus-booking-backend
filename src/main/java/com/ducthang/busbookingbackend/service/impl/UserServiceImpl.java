@@ -30,4 +30,9 @@ public class UserServiceImpl implements IUserService {
                 new AppException(ErrorCode.USER_NOT_EXIST));
     }
 
+    @Override
+    public boolean updatePassword(String email, String password) {
+        return userRepository.updateUserByEmail(email, password);
+    }
+
 }

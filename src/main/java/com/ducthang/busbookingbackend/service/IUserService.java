@@ -6,4 +6,6 @@ import com.ducthang.busbookingbackend.entity.User;
 public interface IUserService {
     UserResponse findUserResponseByEmail(String email);
     User findUserByEmail(String email);
+
+    boolean updatePassword(String email, String password);
 }

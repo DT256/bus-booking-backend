@@ -1,8 +1,7 @@
 package com.ducthang.busbookingbackend.mapper;
 
 import com.ducthang.busbookingbackend.dto.auth.request.UserCreateRequest;
-import com.ducthang.busbookingbackend.dto.user.request.UserRequest;
-import com.ducthang.busbookingbackend.dto.user.response.UserDataResponse;
+
 import com.ducthang.busbookingbackend.dto.user.response.UserResponse;
 import com.ducthang.busbookingbackend.entity.User;
 import org.bson.types.ObjectId;
