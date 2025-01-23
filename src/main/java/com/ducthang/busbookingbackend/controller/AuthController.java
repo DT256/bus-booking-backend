@@ -57,7 +57,7 @@ public class AuthController {
     public ApiResponse<String> validateOtp(@RequestParam String email, @RequestParam String otp){
         boolean isValid = otpService.validateOtp(email, otp);
 
-        return isValid ?ApiResponse.success(message, "Send otp successfully") : ApiResponse.error();
+        return isValid ?ApiResponse.success("OTP is valid!", "Validation successful.") : ApiResponse.error(400,"Invalid OTP","The OTP you entered is incorrect or has expired.");
     }
 
 
