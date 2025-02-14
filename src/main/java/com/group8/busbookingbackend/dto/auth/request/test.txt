@@ -32,7 +32,7 @@ submit
 submit
     UserCreate
     fetch register(UserCreate)
-        findEamil
+        findEmail
         sendOPT
 
         sucess

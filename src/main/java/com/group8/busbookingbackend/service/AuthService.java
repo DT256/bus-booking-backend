@@ -83,13 +83,9 @@ public class AuthService {
     }
 
     // Quên mật khẩu và gửi OTP
-    public String forgotPassword(UserResetPasswordRequest request) throws MessagingException {
-        User user = userService.findUserByEmail(request.getEmail());
-        if (user != null) {
-            String otp = otpService.generateOtp(request.getEmail()); // Tạo OTP
-            emailService.sendOtp(request.getEmail(), otp); // Gửi OTP qua email
-            return "OTP sent to your email.";
-        }
-        return "Email not found.";
+    public boolean resetPassword(String email, String password) {
+
+            return userService.updatePassword(email, password);
+
     }
 }
