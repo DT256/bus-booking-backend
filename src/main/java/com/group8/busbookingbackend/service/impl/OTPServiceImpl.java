@@ -1,5 +1,7 @@
-package com.group8.busbookingbackend.service;
+package com.group8.busbookingbackend.service.impl;
 
+import com.group8.busbookingbackend.service.IEmailService;
+import com.group8.busbookingbackend.service.IOTPService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -9,8 +11,7 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 @Service
-public class OTPService {
-
+public class OTPServiceImpl implements IOTPService {
     private final Map<String, String> otpStore = new HashMap<>();
     private final Map<String, Long> otpExpirationStore = new HashMap<>();
 
@@ -18,9 +19,10 @@ public class OTPService {
     private final long OTP_EXPIRATION_TIME = TimeUnit.MINUTES.toMillis(5);
 
     @Autowired
-    EmailService emailService;
+    IEmailService emailService;
 
     // Tạo OTP và gửi qua email
+    @Override
     public String generateOtp(String email) {
         String otp = String.valueOf(new Random().nextInt(999999 - 100000) + 100000); // 6 chữ số
         otpStore.put(email, otp);  // Lưu OTP
@@ -28,6 +30,7 @@ public class OTPService {
         return otp;
     }
 
+    @Override
     public String sendOtp(String email){
         String otp = this.generateOtp(email);
         boolean isEmailSent = emailService.sendOtp(email,otp);
@@ -36,6 +39,7 @@ public class OTPService {
     }
 
     // Kiểm tra OTP có hợp lệ không
+    @Override
     public boolean validateOtp(String email, String otp) {
         // Kiểm tra OTP có tồn tại không
         if (!otpStore.containsKey(email)) {
@@ -54,6 +58,7 @@ public class OTPService {
     }
 
     // Xóa OTP sau khi xác thực thành công
+    @Override
     public void clearOtp(String email) {
         otpStore.remove(email);
         otpExpirationStore.remove(email);

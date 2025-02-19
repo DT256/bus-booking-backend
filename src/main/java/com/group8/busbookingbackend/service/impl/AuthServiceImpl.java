@@ -1,8 +1,7 @@
-package com.group8.busbookingbackend.service;
+package com.group8.busbookingbackend.service.impl;
 
 import com.group8.busbookingbackend.dto.auth.request.UserCreateRequest;
 import com.group8.busbookingbackend.dto.auth.request.UserLoginRequest;
-import com.group8.busbookingbackend.dto.auth.request.UserResetPasswordRequest;
 import com.group8.busbookingbackend.dto.auth.response.AuthResponse;
 import com.group8.busbookingbackend.entity.Role;
 import com.group8.busbookingbackend.entity.User;
@@ -10,16 +9,17 @@ import com.group8.busbookingbackend.exception.AppException;
 import com.group8.busbookingbackend.exception.ErrorCode;
 import com.group8.busbookingbackend.repository.UserRepository;
 import com.group8.busbookingbackend.security.JwtProvider;
+import com.group8.busbookingbackend.service.IAuthService;
+import com.group8.busbookingbackend.service.IEmailService;
+import com.group8.busbookingbackend.service.IOTPService;
+import com.group8.busbookingbackend.service.IUserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import jakarta.mail.MessagingException;
-
 @Service
-public class AuthService {
-
+public class AuthServiceImpl implements IAuthService {
     @Autowired
     private UserRepository userRepository;
 
@@ -27,15 +27,16 @@ public class AuthService {
     private IUserService userService;
 
     @Autowired
-    private OTPService otpService;
+    private IOTPService otpService;
 
     @Autowired
-    private EmailService emailService;
+    private IEmailService emailService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     // Đăng ký tài khoản mới
+    @Override
     public AuthResponse register(UserCreateRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.EMAIL_EXIST_REGISTER);
@@ -45,10 +46,10 @@ public class AuthService {
         }
 
         User user = User.builder()
-                        .name(request.getName())
-                        .username(request.getUsername())
-                        .email(request.getEmail())
-                        .build();
+                .name(request.getName())
+                .username(request.getUsername())
+                .email(request.getEmail())
+                .build();
 
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(Role.USER);
@@ -59,6 +60,7 @@ public class AuthService {
     }
 
     // Đăng nhập
+    @Override
     public AuthResponse login(UserLoginRequest request) {
         User user = userService.findUserByEmail(request.getEmail());
         boolean matches = passwordEncoder.matches(request.getPassword(), user.getPassword());
@@ -70,6 +72,7 @@ public class AuthService {
     }
 
     // Kích hoạt tài khoản qua OTP
+    @Override
     @Transactional
     public String activateAccount(String email, String otp) {
         User user = userService.findUserByEmail(email);
@@ -83,9 +86,8 @@ public class AuthService {
     }
 
     // Quên mật khẩu và gửi OTP
+    @Override
     public boolean resetPassword(String email, String password) {
-
-            return userService.updatePassword(email, password);
-
+        return userService.updatePassword(email, password);
     }
 }

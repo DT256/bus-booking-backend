@@ -3,12 +3,11 @@ package com.group8.busbookingbackend.controller;
 import com.group8.busbookingbackend.dto.ApiResponse;
 import com.group8.busbookingbackend.dto.auth.request.UserCreateRequest;
 import com.group8.busbookingbackend.dto.auth.request.UserLoginRequest;
-import com.group8.busbookingbackend.dto.auth.request.UserResetPasswordRequest;
 import com.group8.busbookingbackend.dto.auth.response.AuthResponse;
 import com.group8.busbookingbackend.dto.user.response.UserResponse;
-import com.group8.busbookingbackend.service.AuthService;
+import com.group8.busbookingbackend.service.IAuthService;
+import com.group8.busbookingbackend.service.IOTPService;
 import com.group8.busbookingbackend.service.IUserService;
-import com.group8.busbookingbackend.service.OTPService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -18,11 +17,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     @Autowired
-    private AuthService authService;
+    private IAuthService authService;
     @Autowired
     private IUserService userService;
     @Autowired
-    private OTPService otpService;
+    private IOTPService otpService;
 
     @GetMapping("/check-email/{email}")
     public ApiResponse<UserResponse> getUserByEmail(@PathVariable String email) {
