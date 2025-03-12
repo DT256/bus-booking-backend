@@ -8,10 +8,10 @@ import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 
 @Document(collection = "buses")
@@ -21,9 +21,10 @@ import java.util.List;
 @Builder
 public class BusEntity {
     @Id
-    public ObjectId id;
-    public String licensePlate;
-    public int capacity;
+    private ObjectId id;
+    @Indexed(unique = true)
+    private String licensePlate;
+    private int capacity;
     private ObjectId categoryId;
     private List<String> imageUrls;
     private BusStatus status;

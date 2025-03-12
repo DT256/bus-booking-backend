@@ -1,6 +1,9 @@
 package com.group8.busbookingbackend.entity;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -15,6 +18,9 @@ import java.util.List;
 
 @Data
 @Document(collection = "promotions")
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class PromotionEntity {
     @Id
     private ObjectId id;
@@ -33,7 +39,7 @@ public class PromotionEntity {
     private Integer usageLimit;
     private Integer usageCount;
     private PromotionStatus status;
-    private List<String> applicableRoutes;
+    private List<ObjectId> applicableRoutes;
     @CreatedDate
     private LocalDateTime createdAt;
     @LastModifiedDate

@@ -1,6 +1,9 @@
 package com.group8.busbookingbackend.entity;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
@@ -11,6 +14,9 @@ import java.util.List;
 
 @Data
 @Document(collection = "reviews")
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ReviewEntity {
     @Id
     private ObjectId id;
