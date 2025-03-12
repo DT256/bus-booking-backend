@@ -47,9 +47,9 @@ public class User {
 
     private UserStatus status;
 
-    private Set<ObjectId> ticket = new HashSet<>();
+    private Set<ObjectId> tickets = new HashSet<>();
 
-    private Set<ObjectId> payment = new HashSet<>();
+    private Set<ObjectId> payments = new HashSet<>();
 
     @CreatedDate
     private LocalDateTime createdAt;
