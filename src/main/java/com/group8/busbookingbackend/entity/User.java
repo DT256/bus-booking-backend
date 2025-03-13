@@ -44,6 +44,7 @@ public class User {
     private String avatarUrl;
 
     private Role role;
+    private AddressEntity address;
 
     private UserStatus status;
 
