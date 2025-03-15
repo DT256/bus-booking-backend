@@ -3,6 +3,7 @@ package com.group8.busbookingbackend.repository;
 import com.group8.busbookingbackend.entity.TripEntity;
 import org.bson.types.ObjectId;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.mongodb.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -13,4 +14,11 @@ public interface TripRepository extends MongoRepository<TripEntity, ObjectId> {
     List<TripEntity> findByStatus(TripEntity.TripStatus status);
     List<TripEntity> findByDepartureTimeBetween(LocalDateTime start, LocalDateTime end);
     List<TripEntity> findByRouteIdAndDepartureTimeBetween(ObjectId routeId, LocalDateTime departureTime, LocalDateTime departureTime2);
+
+    @Query("{ 'routeId': ?0, 'departureTime': { $gte: ?1, $lt: ?2 }, 'status': 'SCHEDULED' }")
+    List<TripEntity> findByRouteIdAndDepartureTimeAfter(ObjectId routeId, LocalDateTime start, LocalDateTime end);
+
+    @Query("{ 'routeId': ?0, 'departureTime': { $gte: ?1, $lt: ?2 }, 'status': 'SCHEDULED' }")
+    List<TripEntity> findByRouteIdAndDepartureTimeRange(ObjectId routeId, LocalDateTime start, LocalDateTime end);
+
 }
