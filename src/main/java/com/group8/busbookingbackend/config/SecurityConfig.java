@@ -32,6 +32,7 @@ public class SecurityConfig
         httpSecurity.authorizeHttpRequests(request ->
                 request.requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/*").authenticated()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().permitAll());
 
         httpSecurity.sessionManagement(management ->
