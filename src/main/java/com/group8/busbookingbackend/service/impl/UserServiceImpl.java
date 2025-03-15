@@ -8,7 +8,12 @@ import com.group8.busbookingbackend.exception.ErrorCode;
 import com.group8.busbookingbackend.mapper.UserMapper;
 import com.group8.busbookingbackend.repository.UserRepository;
 import com.group8.busbookingbackend.service.IUserService;
+import com.mongodb.client.result.UpdateResult;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -19,6 +24,8 @@ public class UserServiceImpl implements IUserService {
     private UserRepository userRepository;
     @Autowired
     private UserMapper userMapper;
+    @Autowired
+    private MongoTemplate mongoTemplate;
 
     @Override
     public UserResponse findUserResponseByEmail(String email) {
@@ -34,8 +41,11 @@ public class UserServiceImpl implements IUserService {
     }
 
     @Override
-    public boolean updatePassword(String email, String password) {
-        return userRepository.updateUserByEmail(email, password);
+    public boolean updatePassword(String email, String newPassword) {
+        Query query = new Query(Criteria.where("email").is(email));
+        Update update = new Update().set("password", newPassword);
+        UpdateResult result = mongoTemplate.updateFirst(query, update, User.class);
+        return result.getModifiedCount() > 0;
     }
 
     @Override

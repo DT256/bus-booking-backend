@@ -7,7 +7,4 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 
 public interface ReviewRepository extends MongoRepository<ReviewRepository, ObjectId> {
-    List<ReviewRepository> findByBookingId(ObjectId bookingId);
-    List<ReviewRepository> findByUserId(ObjectId userId);
-    List<ReviewRepository> findByRating(Integer rating);
 }
