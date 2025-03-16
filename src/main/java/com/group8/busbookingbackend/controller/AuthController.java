@@ -58,6 +58,13 @@ public class AuthController {
         return isValid ?ApiResponse.success("OTP is valid!", "Validation successful") : ApiResponse.error(400,"Invalid OTP","The OTP you entered is incorrect or has expired.");
     }
 
+    @PostMapping("/active-account")
+    public ApiResponse<String> activeAccount(@RequestParam String email, @RequestParam String otp){
+        boolean isActive = authService.activateAccount(email,otp);
+
+        return isActive ?ApiResponse.success("OTP is valid!", "Account active successful") : ApiResponse.error(400,"Invalid OTP","The OTP you entered is incorrect or has expired.");
+    }
+
 
 
     // Quên mật khẩu và gửi OTP

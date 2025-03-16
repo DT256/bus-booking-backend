@@ -7,6 +7,6 @@ import com.group8.busbookingbackend.dto.auth.response.AuthResponse;
 public interface IAuthService {
     public AuthResponse register(UserCreateRequest request);
     public AuthResponse login(UserLoginRequest request);
-    public String activateAccount(String email, String otp);
+    public boolean activateAccount(String email, String otp);
     public boolean resetPassword(String email, String password);
 }

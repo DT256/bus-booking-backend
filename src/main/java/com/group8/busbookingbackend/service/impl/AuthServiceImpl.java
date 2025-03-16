@@ -80,15 +80,15 @@ public class AuthServiceImpl implements IAuthService {
     // Kích hoạt tài khoản qua OTP
     @Override
     @Transactional
-    public String activateAccount(String email, String otp) {
+    public boolean activateAccount(String email, String otp) {
         User user = userService.findUserByEmail(email);
         if (user != null && otpService.validateOtp(email, otp)) {
             user.setStatus(UserStatus.ACTIVE);
             userRepository.save(user);
             otpService.clearOtp(email);  // Xóa OTP sau khi kích hoạt thành công
-            return "Account activated.";
+            return true;
         }
-        return "Invalid OTP.";
+        return false;
     }
 
     // Quên mật khẩu và gửi OTP
