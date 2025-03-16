@@ -1,13 +1,12 @@
 package com.group8.busbookingbackend.service.impl;
 
 import com.group8.busbookingbackend.dto.trip.request.TripSearchRequest;
+import com.group8.busbookingbackend.dto.trip.response.TripDetailsResponse;
 import com.group8.busbookingbackend.dto.trip.response.TripSearchResponse;
-import com.group8.busbookingbackend.entity.BusEntity;
-import com.group8.busbookingbackend.entity.RouteEntity;
-import com.group8.busbookingbackend.entity.SeatEntity;
-import com.group8.busbookingbackend.entity.TripEntity;
+import com.group8.busbookingbackend.entity.*;
 import com.group8.busbookingbackend.repository.*;
 import com.group8.busbookingbackend.service.ITripService;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -107,4 +106,78 @@ public class TripServiceImpl implements ITripService {
 
         return result.stream().sorted(comparator).collect(Collectors.toList());
     }
+
+
+    public TripDetailsResponse getTripDetails(String tripId) {
+        ObjectId id = new ObjectId(tripId);
+
+        // Lấy thông tin chuyến đi
+        TripEntity trip = tripRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Trip not found with ID: " + tripId));
+
+        // Lấy thông tin xe
+        BusEntity bus = busRepository.findById(trip.getBusId())
+                .orElseThrow(() -> new RuntimeException("Bus not found with ID: " + trip.getBusId()));
+
+        // Lấy thông tin tuyến đường
+        RouteEntity route = routeRepository.findById(trip.getRouteId())
+                .orElseThrow(() -> new RuntimeException("Route not found with ID: " + trip.getRouteId()));
+
+        // Lấy thông tin địa chỉ bắt đầu
+        AddressEntity startAddress = addressRepository.findById(route.getStartPoint())
+                .orElseThrow(() -> new RuntimeException("Start address not found with ID: " + route.getStartPoint()));
+
+        // Lấy thông tin địa chỉ kết thúc
+        AddressEntity endAddress = addressRepository.findById(route.getEndPoint())
+                .orElseThrow(() -> new RuntimeException("End address not found with ID: " + route.getEndPoint()));
+
+        // Lấy danh sách trạng thái ghế
+        List<TripSeatEntity> tripSeats = tripSeatRepository.findByTripId(id);
+
+        // Tạo DTO và ánh xạ dữ liệu
+        TripDetailsResponse dto = new TripDetailsResponse();
+        dto.setId(trip.getId().toString());
+        dto.setDepartureTime(trip.getDepartureTime());
+        dto.setArrivalTime(trip.getArrivalTime());
+        dto.setPrice(trip.getPrice());
+        dto.setStatus(trip.getStatus().name());
+
+        // Ánh xạ thông tin xe
+        TripDetailsResponse.BusDetails busDetails = new TripDetailsResponse.BusDetails();
+        busDetails.setId(bus.getId().toString());
+        busDetails.setLicensePlate(bus.getLicensePlate());
+        busDetails.setCapacity(bus.getCapacity());
+        busDetails.setCategoryId(bus.getCategoryId().toString());
+        busDetails.setStatus(bus.getStatus().name());
+        dto.setBus(busDetails);
+
+        // Ánh xạ thông tin tuyến đường
+        TripDetailsResponse.RouteDetails routeDetails = new TripDetailsResponse.RouteDetails();
+        routeDetails.setId(route.getId().toString());
+        routeDetails.setStartAddress(startAddress);
+        routeDetails.setEndAddress(endAddress);
+        routeDetails.setDistance(route.getDistance());
+        routeDetails.setDuration(route.getDuration());
+        routeDetails.setDescription(route.getDescription());
+        routeDetails.setStatus(route.getStatus().name());
+        dto.setRoute(routeDetails);
+
+        // Ánh xạ danh sách ghế
+        List<TripDetailsResponse.SeatDetails> seatDetailsList = tripSeats.stream().map(seat -> {
+            SeatEntity seatEntity = seatRepository.findById(seat.getSeatId()).orElseThrow();
+
+            TripDetailsResponse.SeatDetails seatDetails = new TripDetailsResponse.SeatDetails();
+            seatDetails.setId(seat.getId().toString());
+            seatDetails.setSeatId(seat.getSeatId().toString());
+            seatDetails.setSeatNumber(seatEntity.getSeatNumber());
+            seatDetails.setFloor(seatEntity.getFloor());
+            seatDetails.setStatus(seat.getStatus().name());
+            return seatDetails;
+        }).collect(Collectors.toList());
+        dto.setSeats(seatDetailsList);
+
+        return dto;
+    }
+
+
 }

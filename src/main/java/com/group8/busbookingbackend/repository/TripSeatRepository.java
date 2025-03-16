@@ -13,5 +13,7 @@ public interface TripSeatRepository extends MongoRepository<TripSeatEntity, Obje
 
     @Query("{ 'tripId': ?0, 'status': 'AVAILABLE' }")
     List<TripSeatEntity> findAvailableSeatsByTrip(ObjectId tripId);
+
+    List<TripSeatEntity> findByTripId(ObjectId tripId);
 }
 
