@@ -5,6 +5,7 @@ import com.group8.busbookingbackend.dto.auth.request.UserLoginRequest;
 import com.group8.busbookingbackend.dto.auth.response.AuthResponse;
 import com.group8.busbookingbackend.entity.Role;
 import com.group8.busbookingbackend.entity.User;
+import com.group8.busbookingbackend.entity.UserStatus;
 import com.group8.busbookingbackend.exception.AppException;
 import com.group8.busbookingbackend.exception.ErrorCode;
 import com.group8.busbookingbackend.repository.UserRepository;
@@ -46,9 +47,8 @@ public class AuthServiceImpl implements IAuthService {
         }
 
         User user = User.builder()
-                .name(request.getName())
                 .username(request.getUsername())
-                .email(request.getEmail())
+                .email(request.getEmail()).status(UserStatus.INACTIVE)
                 .build();
 
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -56,6 +56,7 @@ public class AuthServiceImpl implements IAuthService {
 
         user = userRepository.save(user);
         String token = JwtProvider.generateJwtToken(user);
+        emailService.sendOtp(request.getEmail(), otpService.generateOtp(request.getEmail()));
         return new AuthResponse(token, "Register successfully");
     }
 
@@ -64,6 +65,11 @@ public class AuthServiceImpl implements IAuthService {
     public AuthResponse login(UserLoginRequest request) {
         User user = userService.findUserByEmail(request.getEmail());
         boolean matches = passwordEncoder.matches(request.getPassword(), user.getPassword());
+
+        if(!user.getStatus().toString().equals("ACTIVE")) {
+            throw new AppException(ErrorCode.ACCOUNT_INACTIVE);
+        }
+
         if (!matches) {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
@@ -77,7 +83,7 @@ public class AuthServiceImpl implements IAuthService {
     public String activateAccount(String email, String otp) {
         User user = userService.findUserByEmail(email);
         if (user != null && otpService.validateOtp(email, otp)) {
-//            user.setActive(true);
+            user.setStatus(UserStatus.ACTIVE);
             userRepository.save(user);
             otpService.clearOtp(email);  // Xóa OTP sau khi kích hoạt thành công
             return "Account activated.";

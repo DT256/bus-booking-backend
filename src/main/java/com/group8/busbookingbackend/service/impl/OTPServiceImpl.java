@@ -30,13 +30,7 @@ public class OTPServiceImpl implements IOTPService {
         return otp;
     }
 
-    @Override
-    public String sendOtp(String email){
-        String otp = this.generateOtp(email);
-        boolean isEmailSent = emailService.sendOtp(email,otp);
-        return isEmailSent ? "Send mail successfully" : "Send mail failed";
 
-    }
 
     // Kiểm tra OTP có hợp lệ không
     @Override

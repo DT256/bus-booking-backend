@@ -6,6 +6,7 @@ import com.group8.busbookingbackend.dto.auth.request.UserLoginRequest;
 import com.group8.busbookingbackend.dto.auth.response.AuthResponse;
 import com.group8.busbookingbackend.dto.user.response.UserResponse;
 import com.group8.busbookingbackend.service.IAuthService;
+import com.group8.busbookingbackend.service.IEmailService;
 import com.group8.busbookingbackend.service.IOTPService;
 import com.group8.busbookingbackend.service.IUserService;
 import jakarta.validation.Valid;
@@ -22,6 +23,9 @@ public class AuthController {
     private IUserService userService;
     @Autowired
     private IOTPService otpService;
+
+    @Autowired
+    private IEmailService emailService;
 
     @GetMapping("/check-email/{email}")
     public ApiResponse<UserResponse> getUserByEmail(@PathVariable String email) {
@@ -43,8 +47,8 @@ public class AuthController {
 
     @GetMapping("/send-otp")
     public ApiResponse<String> sendOtp(@RequestParam String email){
-        String message = otpService.sendOtp(email);
-        return ApiResponse.success(message, "Send otp successfully");
+        boolean message = emailService.sendOtp(email,otpService.generateOtp(email));
+        return ApiResponse.success(null, "Send otp successfully");
     }
 
     @PostMapping("validate-otp")

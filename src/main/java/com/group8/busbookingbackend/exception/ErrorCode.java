@@ -16,6 +16,7 @@ public enum ErrorCode
     INVALID_REQUEST(1103, "Invalid request", HttpStatus.BAD_REQUEST),
     EMAIL_EXIST_REGISTER(1104, "This email has been used", HttpStatus.CONFLICT),
     USERNAME_EXIST_REGISTER(1105, "This username has been used", HttpStatus.CONFLICT),
+    ACCOUNT_INACTIVE(423,"Please active your account",HttpStatus.LOCKED),
 
     // User
     USER_NOT_EXIST(1200, "The user does not exist", HttpStatus.NOT_FOUND),

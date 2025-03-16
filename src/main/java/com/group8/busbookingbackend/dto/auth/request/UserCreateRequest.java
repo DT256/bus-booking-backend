@@ -12,9 +12,6 @@ import org.hibernate.validator.constraints.Length;
 @Builder
 public class UserCreateRequest
 {
-    @NotBlank(message = "You must enter name")
-    @Length(max = 40, message = "Maximum characters for  name is 40")
-    private String name;
     @NotBlank(message = "You must enter the email")
     @Length(min = 6, max = 40, message = "Email's length must between 6 and 40")
     @Email(message = "This must be an email")
