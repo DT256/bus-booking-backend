@@ -39,7 +39,7 @@ public class PromotionEntity {
     private Integer usageLimit;
     private Integer usageCount;
     private PromotionStatus status;
-    private List<ObjectId> applicableRoutes;
+    private List<ObjectId> applicableTripIds;
     @CreatedDate
     private LocalDateTime createdAt;
     @LastModifiedDate

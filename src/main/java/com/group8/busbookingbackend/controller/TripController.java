@@ -1,5 +1,6 @@
 package com.group8.busbookingbackend.controller;
 
+import com.group8.busbookingbackend.dto.ApiResponse;
 import com.group8.busbookingbackend.dto.trip.request.TripSearchRequest;
 import com.group8.busbookingbackend.dto.trip.response.TripSearchResponse;
 import com.group8.busbookingbackend.service.ITripService;
@@ -20,7 +21,7 @@ public class TripController {
 
     // Tìm kiếm chuyến đi
     @PostMapping("/search")
-    public List<TripSearchResponse> searchTrips(@RequestBody TripSearchRequest request) {
-        return tripService.searchTrips(request);
+    public ApiResponse<List<TripSearchResponse>> searchTrips(@RequestBody TripSearchRequest request) {
+        return ApiResponse.success(tripService.searchTrips(request), "Search Trip successfully");
     }
 }

@@ -19,8 +19,8 @@ import java.time.LocalDateTime;
 public class RouteEntity{
     @Id
     private ObjectId id;
-    private AddressEntity startPoint;
-    private AddressEntity endPoint;
+    private ObjectId startPoint;
+    private ObjectId endPoint;
     private int distance;
     private double duration;
     private String description;

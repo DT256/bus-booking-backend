@@ -6,33 +6,34 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.annotation.Id;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
-@Document(collection = "trips")
+@Document(collection = "trip_seats")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TripEntity {
+public class TripSeatEntity {
     @Id
     private ObjectId id;
-    private ObjectId busId;
-    private ObjectId routeId;
-    private LocalDateTime departureTime;
-    private LocalDateTime arrivalTime;
-    private double price;
-    private TripStatus status;
+    @Indexed
+    private ObjectId tripId; // Chuyến đi nào
+    @Indexed
+    private ObjectId seatId; // Ghế nào
+    private SeatStatus status; // Trạng thái của ghế theo chuyến này
+
     @CreatedDate
     private LocalDateTime createdAt;
     @LastModifiedDate
     private LocalDateTime updatedAt;
 
-    public enum TripStatus {
-        SCHEDULED, IN_PROGRESS, COMPLETED, CANCELLED
+    public enum SeatStatus {
+        AVAILABLE, BOOKED, MAINTENANCE
     }
 }
+

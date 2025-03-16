@@ -1,5 +1,7 @@
 package com.group8.busbookingbackend.dto.trip.response;
 
+import com.group8.busbookingbackend.entity.BusEntity;
+import com.group8.busbookingbackend.entity.RouteEntity;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,8 +15,8 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class TripSearchResponse {
     private String id;
-    private String busId;
-    private String routeId;
+    private BusEntity bus;
+    private RouteEntity route;
     private LocalDateTime departureTime;
     private LocalDateTime arrivalTime;
     private double price;
