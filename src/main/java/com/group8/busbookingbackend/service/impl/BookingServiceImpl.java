@@ -1,23 +1,19 @@
 package com.group8.busbookingbackend.service.impl;
 
 import com.group8.busbookingbackend.dto.booking.response.BookingResponse;
-import com.group8.busbookingbackend.entity.BookingEntity;
-import com.group8.busbookingbackend.entity.SeatEntity;
-import com.group8.busbookingbackend.entity.TripEntity;
-import com.group8.busbookingbackend.entity.User;
-import com.group8.busbookingbackend.repository.BookingRepository;
-import com.group8.busbookingbackend.repository.SeatRepository;
-import com.group8.busbookingbackend.repository.TripRepository;
-import com.group8.busbookingbackend.repository.UserRepository;
+import com.group8.busbookingbackend.entity.*;
+import com.group8.busbookingbackend.repository.*;
 import com.group8.busbookingbackend.service.IBookingService;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,69 +30,110 @@ public class BookingServiceImpl implements IBookingService {
     @Autowired
     private UserRepository userRepository;
 
-    public BookingResponse bookTrip(String userId, String tripId, List<String> selectedSeatIds,
-                                    List<BookingEntity.PassengerDetail> passengerDetails,
-                                    BookingEntity.PickupDropoff pickupPoint,
-                                    BookingEntity.PickupDropoff dropoffPoint) {
-        // Kiểm tra trip
-        TripEntity trip = tripRepository.findById(new ObjectId(tripId))
-                .orElseThrow(() -> new RuntimeException("Trip not found"));
+    @Autowired
+    private TripSeatRepository tripSeatRepository;
 
-        // Kiểm tra user
-        User user = userRepository.findById(new ObjectId(userId))
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    @Autowired
+    private RedisTemplate<String, String> redisTemplate;
 
-        // Kiểm tra ghế còn trống
-        List<SeatEntity> availableSeats = seatRepository.findByBusIdAndStatus(trip.getBusId(),
-                SeatEntity.SeatStatus.AVAILABLE);
-        List<ObjectId> seatIds = selectedSeatIds.stream().map(ObjectId::new).collect(Collectors.toList());
+    private static final int PAYMENT_TIMEOUT_MINUTES = 30;
+    private static final String REDIS_PREFIX = "seat:pending:";
 
-        if (availableSeats.size() < seatIds.size()) {
-            throw new RuntimeException("Not enough available seats");
+    public BookingEntity bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice) {
+        // Kiểm tra xem ghế có trống không
+        List<TripSeatEntity> seats = tripSeatRepository.findByTripIdAndStatus(tripId, TripSeatEntity.SeatStatus.AVAILABLE);
+        System.out.println(seats.size());
+        if (seats.size() < seatIds.size()) {
+            throw new IllegalStateException("Không đủ ghế trống cho chuyến đi này");
         }
 
-        // Kiểm tra các ghế được chọn có hợp lệ không
-        List<SeatEntity> seatsToBook = availableSeats.stream()
-                .filter(seat -> seatIds.contains(seat.getId()))
-                .collect(Collectors.toList());
+        // Kiểm tra ghế có đang chờ thanh toán không
+        for (ObjectId seatId : seatIds) {
+            String redisKey = REDIS_PREFIX + tripId + ":" + seatId;
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(redisKey))) {
+                throw new IllegalStateException("Ghế " + seatId + " đang được giữ bởi người khác");
+            }
+        }
 
-        if (seatsToBook.size() != seatIds.size()) {
-            throw new RuntimeException("Some selected seats are not available");
+        // Tạo mã đặt vé duy nhất
+        String bookingCode = UUID.randomUUID().toString();
+
+        // Đặt ghế vào trạng thái tạm giữ trong Redis
+        for (ObjectId seatId : seatIds) {
+            String redisKey = REDIS_PREFIX + tripId + ":" + seatId;
+            redisTemplate.opsForValue().set(redisKey, bookingCode, PAYMENT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+            System.out.println(tripId);
+            System.out.println(seatId);
+            TripSeatEntity seat = tripSeatRepository.findByTripIdAndSeatId(tripId, seatId);
+            System.out.println(seat);
+            seat.setStatus(TripSeatEntity.SeatStatus.BOOKED);
+            tripSeatRepository.save(seat);
         }
 
         // Tạo booking
         BookingEntity booking = BookingEntity.builder()
-                .tripId(trip.getId())
-                .userId(user.getId())
+                .userId(userId)
+                .tripId(tripId)
                 .seatIds(seatIds)
-                .totalPrice(BigDecimal.valueOf(trip.getPrice() * seatIds.size()))
+                .totalPrice(totalPrice)
                 .status(BookingEntity.BookingStatus.PENDING)
                 .paymentStatus(BookingEntity.PaymentStatus.PENDING)
-                .paymentMethod(BookingEntity.PaymentMethod.CASH) // Mặc định
-                .bookingCode(UUID.randomUUID().toString().substring(0, 8).toUpperCase())
-                .passengerDetails(passengerDetails)
-                .pickupPoint(pickupPoint)
-                .dropoffPoint(dropoffPoint)
+                .paymentMethod(BookingEntity.PaymentMethod.CASH) // Mặc định, có thể thay đổi
+                .bookingCode(bookingCode)
                 .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .build();
 
-        // Cập nhật trạng thái ghế
-        seatsToBook.forEach(seat -> {
-            seat.setStatus(SeatEntity.SeatStatus.BOOKED);
-            seat.setUpdatedAt(LocalDateTime.now());
-            seatRepository.save(seat);
-        });
+        return bookingRepository.save(booking);
+    }
 
-        // Thêm booking vào danh sách tickets của user
-        user.getTickets().add(booking.getId());
-        userRepository.save(user);
+    @Override
+    public BookingEntity confirmPayment(String bookingCode) {
+        BookingEntity booking = bookingRepository.findByBookingCode(bookingCode).get();
+        if (booking == null) {
+            throw new IllegalArgumentException("Không tìm thấy đặt vé với mã: " + bookingCode);
+        }
 
-        // Lưu booking
-        booking = bookingRepository.save(booking);
+        if (booking.getPaymentStatus() != BookingEntity.PaymentStatus.PENDING) {
+            throw new IllegalStateException("Đặt vé đã được thanh toán hoặc hủy");
+        }
 
-        // Chuyển sang DTO để trả về
-        return toBookingResponse(booking);
+        // Kiểm tra xem còn trong thời gian 30 phút không
+        List<ObjectId> seatIds = booking.getSeatIds();
+        for (ObjectId seatId : seatIds) {
+            String redisKey = REDIS_PREFIX + booking.getTripId() + ":" + seatId;
+            if (!redisTemplate.hasKey(redisKey)) {
+                throw new IllegalStateException("Thời gian giữ ghế đã hết, vui lòng đặt lại");
+            }
+        }
+
+        // Cập nhật trạng thái
+        booking.setPaymentStatus(BookingEntity.PaymentStatus.PAID);
+        booking.setStatus(BookingEntity.BookingStatus.CONFIRMED);
+
+        // Xóa ghế khỏi Redis sau khi thanh toán thành công
+        for (ObjectId seatId : seatIds) {
+            String redisKey = REDIS_PREFIX + booking.getTripId() + ":" + seatId;
+            redisTemplate.delete(redisKey);
+        }
+
+        return bookingRepository.save(booking);
+    }
+
+    // Hủy booking nếu quá thời gian
+    @Override
+    public void cancelExpiredBooking(String bookingCode) {
+        BookingEntity booking = bookingRepository.findByBookingCode(bookingCode).get();
+        if (booking != null && booking.getPaymentStatus() == BookingEntity.PaymentStatus.PENDING) {
+            booking.setStatus(BookingEntity.BookingStatus.CANCELLED);
+            bookingRepository.save(booking);
+
+            // Cập nhật trạng thái ghế về AVAILABLE
+            for (ObjectId seatId : booking.getSeatIds()) {
+                TripSeatEntity seat = tripSeatRepository.findByTripIdAndSeatId(booking.getTripId(), seatId);
+                seat.setStatus(TripSeatEntity.SeatStatus.AVAILABLE);
+                tripSeatRepository.save(seat);
+            }
+        }
     }
 
     public BookingResponse cancelBooking(String bookingId) {

@@ -15,5 +15,8 @@ public interface TripSeatRepository extends MongoRepository<TripSeatEntity, Obje
     List<TripSeatEntity> findAvailableSeatsByTrip(ObjectId tripId);
 
     List<TripSeatEntity> findByTripId(ObjectId tripId);
+
+    List<TripSeatEntity> findByTripIdAndStatus(ObjectId tripId, TripSeatEntity.SeatStatus status);
+    TripSeatEntity findByTripIdAndSeatId(ObjectId tripId, ObjectId seatId);
 }
 
