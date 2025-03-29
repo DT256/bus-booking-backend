@@ -33,6 +33,7 @@ public class SecurityConfig
                 request.requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/*").authenticated()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().permitAll());
 
         httpSecurity.sessionManagement(management ->
