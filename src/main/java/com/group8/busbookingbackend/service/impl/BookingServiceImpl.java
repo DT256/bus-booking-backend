@@ -39,38 +39,29 @@ public class BookingServiceImpl implements IBookingService {
     private static final int PAYMENT_TIMEOUT_MINUTES = 30;
     private static final String REDIS_PREFIX = "seat:pending:";
 
+    @Override
     public BookingEntity bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice) {
-        // Kiểm tra xem ghế có trống không
         List<TripSeatEntity> seats = tripSeatRepository.findByTripIdAndStatus(tripId, TripSeatEntity.SeatStatus.AVAILABLE);
-        System.out.println(seats.size());
         if (seats.size() < seatIds.size()) {
             throw new IllegalStateException("Không đủ ghế trống cho chuyến đi này");
         }
 
-        // Kiểm tra ghế có đang chờ thanh toán không
+        String bookingCode = UUID.randomUUID().toString();
+
         for (ObjectId seatId : seatIds) {
             String redisKey = REDIS_PREFIX + tripId + ":" + seatId;
             if (Boolean.TRUE.equals(redisTemplate.hasKey(redisKey))) {
                 throw new IllegalStateException("Ghế " + seatId + " đang được giữ bởi người khác");
             }
-        }
-
-        // Tạo mã đặt vé duy nhất
-        String bookingCode = UUID.randomUUID().toString();
-
-        // Đặt ghế vào trạng thái tạm giữ trong Redis
-        for (ObjectId seatId : seatIds) {
-            String redisKey = REDIS_PREFIX + tripId + ":" + seatId;
             redisTemplate.opsForValue().set(redisKey, bookingCode, PAYMENT_TIMEOUT_MINUTES, TimeUnit.MINUTES);
-            System.out.println(tripId);
-            System.out.println(seatId);
             TripSeatEntity seat = tripSeatRepository.findByTripIdAndSeatId(tripId, seatId);
-            System.out.println(seat);
+            if (seat == null) {
+                throw new IllegalArgumentException("Không tìm thấy ghế với tripId: " + tripId + " và seatId: " + seatId);
+            }
             seat.setStatus(TripSeatEntity.SeatStatus.BOOKED);
             tripSeatRepository.save(seat);
         }
 
-        // Tạo booking
         BookingEntity booking = BookingEntity.builder()
                 .userId(userId)
                 .tripId(tripId)
@@ -78,7 +69,7 @@ public class BookingServiceImpl implements IBookingService {
                 .totalPrice(totalPrice)
                 .status(BookingEntity.BookingStatus.PENDING)
                 .paymentStatus(BookingEntity.PaymentStatus.PENDING)
-                .paymentMethod(BookingEntity.PaymentMethod.CASH) // Mặc định, có thể thay đổi
+                .paymentMethod(BookingEntity.PaymentMethod.CASH)
                 .bookingCode(bookingCode)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -97,7 +88,6 @@ public class BookingServiceImpl implements IBookingService {
             throw new IllegalStateException("Đặt vé đã được thanh toán hoặc hủy");
         }
 
-        // Kiểm tra xem còn trong thời gian 30 phút không
         List<ObjectId> seatIds = booking.getSeatIds();
         for (ObjectId seatId : seatIds) {
             String redisKey = REDIS_PREFIX + booking.getTripId() + ":" + seatId;
@@ -106,11 +96,9 @@ public class BookingServiceImpl implements IBookingService {
             }
         }
 
-        // Cập nhật trạng thái
         booking.setPaymentStatus(BookingEntity.PaymentStatus.PAID);
         booking.setStatus(BookingEntity.BookingStatus.CONFIRMED);
 
-        // Xóa ghế khỏi Redis sau khi thanh toán thành công
         for (ObjectId seatId : seatIds) {
             String redisKey = REDIS_PREFIX + booking.getTripId() + ":" + seatId;
             redisTemplate.delete(redisKey);
@@ -127,11 +115,12 @@ public class BookingServiceImpl implements IBookingService {
             booking.setStatus(BookingEntity.BookingStatus.CANCELLED);
             bookingRepository.save(booking);
 
-            // Cập nhật trạng thái ghế về AVAILABLE
             for (ObjectId seatId : booking.getSeatIds()) {
                 TripSeatEntity seat = tripSeatRepository.findByTripIdAndSeatId(booking.getTripId(), seatId);
-                seat.setStatus(TripSeatEntity.SeatStatus.AVAILABLE);
-                tripSeatRepository.save(seat);
+                if (seat != null) {
+                    seat.setStatus(TripSeatEntity.SeatStatus.AVAILABLE);
+                    tripSeatRepository.save(seat);
+                }
             }
         }
     }
