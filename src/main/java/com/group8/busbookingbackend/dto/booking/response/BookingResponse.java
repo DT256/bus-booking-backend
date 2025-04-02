@@ -18,7 +18,7 @@ public class BookingResponse{
     private BookingEntity.PaymentStatus paymentStatus;
     private BookingEntity.PaymentMethod paymentMethod;
     private String bookingCode;
-    private List<BookingEntity.PassengerDetail> passengerDetails;
+    private BookingEntity.PassengerDetail passengerDetail;
     private BookingEntity.PickupDropoff pickupPoint;
     private BookingEntity.PickupDropoff dropoffPoint;
     private LocalDateTime createdAt;

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -40,10 +41,20 @@ public class BookingServiceImpl implements IBookingService {
     private static final String REDIS_PREFIX = "seat:pending:";
 
     @Override
-    public BookingEntity bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice) {
+    public BookingEntity bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice,
+                                    BookingEntity.PickupDropoff pickupPoint, BookingEntity.PickupDropoff dropoffPoint,
+                                  BookingEntity.PassengerDetail passengerDetails) {
         List<TripSeatEntity> seats = tripSeatRepository.findByTripIdAndStatus(tripId, TripSeatEntity.SeatStatus.AVAILABLE);
         if (seats.size() < seatIds.size()) {
             throw new IllegalStateException("Không đủ ghế trống cho chuyến đi này");
+        }
+
+        // Kiểm tra pickup/dropoff
+        if (pickupPoint == null || dropoffPoint == null) {
+            throw new IllegalArgumentException("Điểm đón và trả không được để trống");
+        }
+        if (pickupPoint.getTime().isAfter(dropoffPoint.getTime())) {
+            throw new IllegalArgumentException("Thời gian đón phải trước thời gian trả");
         }
 
         String bookingCode = UUID.randomUUID().toString();
@@ -70,6 +81,9 @@ public class BookingServiceImpl implements IBookingService {
                 .status(BookingEntity.BookingStatus.PENDING)
                 .paymentStatus(BookingEntity.PaymentStatus.PENDING)
                 .paymentMethod(BookingEntity.PaymentMethod.CASH)
+                .passengerDetail(passengerDetails)
+                .pickupPoint(pickupPoint)
+                .dropoffPoint(dropoffPoint)
                 .bookingCode(bookingCode)
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -125,54 +139,49 @@ public class BookingServiceImpl implements IBookingService {
         }
     }
 
-    public BookingResponse cancelBooking(String bookingId) {
-        // Tìm booking
-        BookingEntity booking = bookingRepository.findById(new ObjectId(bookingId))
-                .orElseThrow(() -> new RuntimeException("Booking not found"));
+    public BookingEntity cancelBooking(String bookingCode) {
+        // Tìm booking theo bookingCode
+        BookingEntity booking = bookingRepository.findByBookingCode(bookingCode).get();
+        if (booking == null) {
+            throw new IllegalArgumentException("Không tìm thấy đặt vé với mã: " + bookingCode);
+        }
 
         // Kiểm tra trạng thái booking
         if (booking.getStatus() == BookingEntity.BookingStatus.CANCELLED) {
-            throw new RuntimeException("Booking is already cancelled");
+            throw new IllegalStateException("Vé đã bị hủy trước đó");
         }
         if (booking.getStatus() == BookingEntity.BookingStatus.COMPLETED) {
-            throw new RuntimeException("Cannot cancel a completed trip");
+            throw new IllegalStateException("Không thể hủy vé đã hoàn thành");
         }
 
-        // Tìm trip
+        // Kiểm tra thời gian khởi hành của chuyến đi
         TripEntity trip = tripRepository.findById(booking.getTripId())
-                .orElseThrow(() -> new RuntimeException("Trip not found"));
-
-        // Kiểm tra thời gian hủy (ví dụ: không cho hủy nếu chuyến xe đã khởi hành)
-        if (trip.getDepartureTime().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Cannot cancel after trip has started");
-        }
-
-        // Giải phóng ghế
-        List<SeatEntity> bookedSeats = seatRepository.findAllById(booking.getSeatIds());
-        for (SeatEntity seat : bookedSeats) {
-            if (seat.getStatus() == SeatEntity.SeatStatus.BOOKED) {
-                seat.setStatus(SeatEntity.SeatStatus.AVAILABLE);
-                seat.setUpdatedAt(LocalDateTime.now());
-                seatRepository.save(seat);
-            }
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chuyến đi: " + booking.getTripId()));
+        if (LocalDateTime.now().isAfter(trip.getDepartureTime())) {
+            throw new IllegalStateException("Không thể hủy vé sau khi chuyến đi đã khởi hành");
         }
 
         // Cập nhật trạng thái booking
         booking.setStatus(BookingEntity.BookingStatus.CANCELLED);
         if (booking.getPaymentStatus() == BookingEntity.PaymentStatus.PAID) {
-            booking.setPaymentStatus(BookingEntity.PaymentStatus.REFUNDED); // Giả định hoàn tiền
+            booking.setPaymentStatus(BookingEntity.PaymentStatus.REFUNDED); // Nếu đã thanh toán, đánh dấu hoàn tiền
         }
-        booking.setUpdatedAt(LocalDateTime.now());
-        bookingRepository.save(booking);
 
-        // Xóa booking khỏi danh sách tickets của user
-        User user = userRepository.findById(booking.getUserId())
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        user.getTickets().remove(booking.getId());
-        userRepository.save(user);
+        // Giải phóng ghế
+        List<ObjectId> seatIds = booking.getSeatIds();
+        for (ObjectId seatId : seatIds) {
+            String redisKey = REDIS_PREFIX + booking.getTripId() + ":" + seatId;
+            redisTemplate.delete(redisKey); // Xóa dữ liệu tạm trong Redis (nếu có)
 
-        // Chuyển sang DTO để trả về
-        return toBookingResponse(booking);
+            TripSeatEntity seat = tripSeatRepository.findByTripIdAndSeatId(booking.getTripId(), seatId);
+            if (seat != null) {
+                seat.setStatus(TripSeatEntity.SeatStatus.AVAILABLE);
+                tripSeatRepository.save(seat);
+            }
+        }
+
+        // Lưu thay đổi
+        return bookingRepository.save(booking);
     }
 
     private BookingResponse toBookingResponse(BookingEntity booking) {
@@ -186,7 +195,7 @@ public class BookingServiceImpl implements IBookingService {
         bookingResponse.setPaymentStatus(booking.getPaymentStatus());
         bookingResponse.setPaymentMethod(booking.getPaymentMethod());
         bookingResponse.setBookingCode(booking.getBookingCode());
-        bookingResponse.setPassengerDetails(booking.getPassengerDetails());
+        bookingResponse.setPassengerDetail(booking.getPassengerDetail());
         bookingResponse.setPickupPoint(booking.getPickupPoint());
         bookingResponse.setDropoffPoint(booking.getDropoffPoint());
         bookingResponse.setCreatedAt(booking.getCreatedAt());
@@ -203,6 +212,19 @@ public class BookingServiceImpl implements IBookingService {
         return seatRepository.findByBusIdAndStatus(trip.getBusId(), SeatEntity.SeatStatus.AVAILABLE);
     }
 
+    @Override
+    public List<BookingResponse> getBookingHistory(ObjectId userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID không được để trống");
+        }
+
+        List<BookingEntity> bookings = bookingRepository.findByUserId(userId);
+        if (bookings.isEmpty()) {
+            throw new IllegalStateException("Không tìm thấy lịch sử đặt vé cho người dùng này");
+        }
+
+        return bookings.stream().map(this::toBookingResponse).toList();
+    }
 
 
 }

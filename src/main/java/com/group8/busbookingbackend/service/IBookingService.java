@@ -9,9 +9,12 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public interface IBookingService {
-    public BookingEntity bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice);
+    public BookingEntity bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice,
+                                    BookingEntity.PickupDropoff pickupPoint, BookingEntity.PickupDropoff dropoffPoint,
+                                    BookingEntity.PassengerDetail passengerDetails);
     public void cancelExpiredBooking(String bookingCode);
     public BookingEntity confirmPayment(String bookingCode);
-    public BookingResponse cancelBooking(String bookingId);
+    public BookingEntity cancelBooking(String bookingId);
     public List<SeatEntity> getAvailableSeats(String tripId);
+    public List<BookingResponse> getBookingHistory(ObjectId userId);
 }

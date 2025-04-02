@@ -1,20 +1,20 @@
 package com.group8.busbookingbackend.dto.booking.request;
 
 import com.group8.busbookingbackend.entity.BookingEntity;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
-import lombok.NoArgsConstructor;
+import org.bson.types.ObjectId;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
 public class BookingRequest {
-    private List<String> seatIds;
-    private List<BookingEntity.PassengerDetail> passengerDetails;
+    private ObjectId userId;
+    private ObjectId tripId;
+    private List<ObjectId> seatIds;
+    private BigDecimal totalPrice;
+    private BookingEntity.PassengerDetail passengerDetail;
     private BookingEntity.PickupDropoff pickupPoint;
     private BookingEntity.PickupDropoff dropoffPoint;
 }

@@ -32,7 +32,7 @@ public class BookingEntity {
     private PaymentMethod paymentMethod;
     @Indexed(unique = true)
     private String bookingCode;
-    private List<PassengerDetail> passengerDetails;
+    private PassengerDetail passengerDetail;
     private PickupDropoff pickupPoint;
     private PickupDropoff dropoffPoint;
     @CreatedDate
