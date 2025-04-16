@@ -7,8 +7,10 @@ import org.springframework.data.mongodb.repository.Query;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TripRepository extends MongoRepository<TripEntity, ObjectId> {
+    Optional<TripEntity> findById(ObjectId id);
     List<TripEntity> findByRouteId(ObjectId routeId);
     List<TripEntity> findByBusId(ObjectId busId);
     List<TripEntity> findByStatus(TripEntity.TripStatus status);
