@@ -15,13 +15,16 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class TripSearchResponse {
     private String id;
-    private BusEntity bus;
-    private RouteEntity route;
+    private String busId;
+    private int capacity;
+    private String avatar;
     private LocalDateTime departureTime;
     private LocalDateTime arrivalTime;
     private double price;
     private String startPointCity;
     private String endPointCity;
+    private double duration;
+    private double distance;
     private int availableSeats;
     private String busType;
     private String status;

@@ -8,33 +8,15 @@ import java.util.List;
 @Data
 public class TripDetailsResponse {
     private String id;
-    private BusDetails bus;
-    private RouteDetails route;
+    private String busId;
+    private String licensePlate;
+    private int capacity;
     private LocalDateTime departureTime;
-    private LocalDateTime arrivalTime;
     private double price;
     private String status;
+    private String startPointCity;
+    private String endPointCity;
     private List<SeatDetails> seats;
-
-    @Data
-    public static class BusDetails {
-        private String id;
-        private String licensePlate;
-        private int capacity;
-        private String categoryId;
-        private String status;
-    }
-
-    @Data
-    public static class RouteDetails {
-        private String id;
-        private AddressEntity startAddress;
-        private AddressEntity endAddress;
-        private int distance;
-        private double duration;
-        private String description;
-        private String status;
-    }
 
     @Data
     public static class SeatDetails {

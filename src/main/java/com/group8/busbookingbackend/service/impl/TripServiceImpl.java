@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,13 +43,14 @@ public class TripServiceImpl implements ITripService {
             return new ArrayList<>();
         }
 
-        // Lấy khoảng thời gian trong ngày
+        // Thiết lập khoảng thời gian trong ngày để lọc chuyến theo ngày
         LocalDateTime startOfDay = request.getDepartureDate().withHour(0).withMinute(0).withSecond(0);
         LocalDateTime endOfDay = startOfDay.plusDays(1);
 
-        // Tìm các chuyến đi
         List<TripSearchResponse> result = new ArrayList<>();
+
         for (RouteEntity route : routes) {
+            // Tìm chuyến đi theo route và thời gian
             List<TripEntity> trips = tripRepository.findByRouteIdAndDepartureTimeRange(
                     route.getId(), startOfDay, endOfDay);
 
@@ -60,53 +62,60 @@ public class TripServiceImpl implements ITripService {
                 // Đếm số ghế trống
                 int availableSeats = tripSeatRepository.findAvailableSeatsByTrip(trip.getId()).size();
 
-                // Lấy loại xe (dựa trên ghế đầu tiên, giả định xe chỉ có 1 loại ghế)
+                // Xác định loại ghế (giả sử tất cả ghế cùng loại)
                 List<SeatEntity> allSeats = seatRepository.findByBusId(trip.getBusId());
                 String busType = allSeats.isEmpty() ? "UNKNOWN" : allSeats.get(0).getType().toString();
 
-                // Lọc theo các tiêu chí
+                // Lọc theo điều kiện tìm kiếm
                 if (request.getMinPrice() != null && trip.getPrice() < request.getMinPrice()) continue;
                 if (request.getMaxPrice() != null && trip.getPrice() > request.getMaxPrice()) continue;
                 if (request.getMinAvailableSeats() != null && availableSeats < request.getMinAvailableSeats()) continue;
                 if (request.getBusType() != null && !request.getBusType().equalsIgnoreCase(busType)) continue;
 
-                // Tạo DTO
-                TripSearchResponse dto = new TripSearchResponse();
-                dto.setId(trip.getId().toString());
-                dto.setBus(busRepository.findById(trip.getBusId()).orElseThrow(() -> new RuntimeException("Bus not found")));
-                dto.setRoute(routeRepository.findById(route.getId()).orElseThrow(() -> new RuntimeException("Route not found")));
-                dto.setDepartureTime(trip.getDepartureTime());
-                dto.setArrivalTime(trip.getArrivalTime());
-                dto.setPrice(trip.getPrice());
-//                dto.setStartPointCity(route.getStartPoint().getCity());
-                dto.setStartPointCity(addressRepository.findById(route.getStartPoint()).get().getCity());
-                dto.setEndPointCity(addressRepository.findById(route.getEndPoint()).get().getCity());
-                dto.setAvailableSeats(availableSeats);
-                dto.setBusType(busType);
-                dto.setStatus(trip.getStatus().toString());
+                // Lấy thành phố bắt đầu/kết thúc từ địa chỉ
+                String startCity = addressRepository.findById(route.getStartPoint())
+                        .map(AddressEntity::getCity).orElse("UNKNOWN");
+                String endCity = addressRepository.findById(route.getEndPoint())
+                        .map(AddressEntity::getCity).orElse("UNKNOWN");
+
+                // Tạo DTO kết quả
+                TripSearchResponse dto = TripSearchResponse.builder()
+                        .id(trip.getId().toString())
+                        .busId(bus.getId().toString())
+                        .capacity(bus.getCapacity())
+                        .avatar(bus.getImageUrls().get(0))
+                        .departureTime(trip.getDepartureTime())
+                        .arrivalTime(trip.getArrivalTime())
+                        .duration(route.getDuration())
+                        .distance(route.getDistance())
+                        .price(trip.getPrice())
+                        .startPointCity(startCity)
+                        .endPointCity(endCity)
+                        .availableSeats(availableSeats)
+                        .busType(busType)
+                        .status(trip.getStatus().toString())
+                        .build();
 
                 result.add(dto);
             }
         }
 
-        // Sắp xếp kết quả
-        String sortBy = request.getSortBy() != null ? request.getSortBy() : "departureTime";
-        String sortOrder = request.getSortOrder() != null ? request.getSortOrder() : "asc";
+        // Sắp xếp danh sách kết quả
+        String sortBy = Optional.ofNullable(request.getSortBy()).orElse("departureTime");
+        String sortOrder = Optional.ofNullable(request.getSortOrder()).orElse("asc");
 
-        Comparator<TripSearchResponse> comparator;
-        if ("price".equalsIgnoreCase(sortBy)) {
-            comparator = Comparator.comparingDouble(TripSearchResponse::getPrice);
-        } else {
-            comparator = Comparator.comparing(TripSearchResponse::getDepartureTime);
-        }
+        Comparator<TripSearchResponse> comparator = "price".equalsIgnoreCase(sortBy)
+                ? Comparator.comparingDouble(TripSearchResponse::getPrice)
+                : Comparator.comparing(TripSearchResponse::getDepartureTime);
 
         if ("desc".equalsIgnoreCase(sortOrder)) {
             comparator = comparator.reversed();
         }
 
-        return result.stream().sorted(comparator).collect(Collectors.toList());
+        return result.stream()
+                .sorted(comparator)
+                .collect(Collectors.toList());
     }
-
 
     public TripDetailsResponse getTripDetails(String tripId) {
         ObjectId id = new ObjectId(tripId);
@@ -137,30 +146,14 @@ public class TripServiceImpl implements ITripService {
         // Tạo DTO và ánh xạ dữ liệu
         TripDetailsResponse dto = new TripDetailsResponse();
         dto.setId(trip.getId().toString());
+        dto.setBusId(bus.getId().toString());
+        dto.setLicensePlate(bus.getLicensePlate());
+        dto.setCapacity(bus.getCapacity());
         dto.setDepartureTime(trip.getDepartureTime());
-        dto.setArrivalTime(trip.getArrivalTime());
         dto.setPrice(trip.getPrice());
         dto.setStatus(trip.getStatus().name());
-
-        // Ánh xạ thông tin xe
-        TripDetailsResponse.BusDetails busDetails = new TripDetailsResponse.BusDetails();
-        busDetails.setId(bus.getId().toString());
-        busDetails.setLicensePlate(bus.getLicensePlate());
-        busDetails.setCapacity(bus.getCapacity());
-        busDetails.setCategoryId(bus.getCategoryId().toString());
-        busDetails.setStatus(bus.getStatus().name());
-        dto.setBus(busDetails);
-
-        // Ánh xạ thông tin tuyến đường
-        TripDetailsResponse.RouteDetails routeDetails = new TripDetailsResponse.RouteDetails();
-        routeDetails.setId(route.getId().toString());
-        routeDetails.setStartAddress(startAddress);
-        routeDetails.setEndAddress(endAddress);
-        routeDetails.setDistance(route.getDistance());
-        routeDetails.setDuration(route.getDuration());
-        routeDetails.setDescription(route.getDescription());
-        routeDetails.setStatus(route.getStatus().name());
-        dto.setRoute(routeDetails);
+        dto.setStartPointCity(startAddress.getCity());
+        dto.setEndPointCity(endAddress.getCity());
 
         // Ánh xạ danh sách ghế
         List<TripDetailsResponse.SeatDetails> seatDetailsList = tripSeats.stream().map(seat -> {
