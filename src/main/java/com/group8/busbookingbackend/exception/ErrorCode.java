@@ -16,10 +16,11 @@ public enum ErrorCode
     INVALID_REQUEST(1103, "Invalid request", HttpStatus.BAD_REQUEST),
     EMAIL_EXIST_REGISTER(1104, "This email has been used", HttpStatus.CONFLICT),
     USERNAME_EXIST_REGISTER(1105, "This username has been used", HttpStatus.CONFLICT),
+    PASSWORD_INVALID(1106, "Mật khẩu không đúng", HttpStatus.BAD_REQUEST),
     ACCOUNT_INACTIVE(423,"Please active your account",HttpStatus.LOCKED),
 
-    // User
-    USER_NOT_EXIST(1200, "The user does not exist", HttpStatus.NOT_FOUND),
+    // User2
+    USER_NOT_EXIST(1200, "Người dùng không tồn tại", HttpStatus.NOT_FOUND),
 
     ;
     private final int responseCode;

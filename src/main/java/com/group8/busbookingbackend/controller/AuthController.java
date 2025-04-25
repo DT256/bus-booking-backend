@@ -11,6 +11,7 @@ import com.group8.busbookingbackend.service.IOTPService;
 import com.group8.busbookingbackend.service.IUserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -35,14 +36,22 @@ public class AuthController {
 
     // Đăng ký tài khoản mới
     @PostMapping("/register")
-    public AuthResponse register(@RequestBody UserCreateRequest user) {
-        return authService.register(user);
+    public ApiResponse<AuthResponse> register(@RequestBody UserCreateRequest user) {
+        return ApiResponse.success(authService.register(user),"Register successfully");
     }
 
     // Đăng nhập
     @PostMapping("/login")
-    public AuthResponse login(@RequestBody @Valid UserLoginRequest request) {
-        return authService.login(request);
+    public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody @Valid UserLoginRequest request) {
+        AuthResponse authResponse = authService.login(request);
+
+        ApiResponse<AuthResponse> response = new ApiResponse<>();
+        response.setStatus("success");
+        response.setCode(200);
+        response.setMessage(authResponse.getMessage());
+        response.setData(authResponse);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/send-otp")

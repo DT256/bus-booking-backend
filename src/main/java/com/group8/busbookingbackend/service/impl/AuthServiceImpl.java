@@ -64,6 +64,9 @@ public class AuthServiceImpl implements IAuthService {
     @Override
     public AuthResponse login(UserLoginRequest request) {
         User user = userService.findUserByEmail(request.getEmail());
+
+
+
         boolean matches = passwordEncoder.matches(request.getPassword(), user.getPassword());
 
         if(!user.getStatus().toString().equals("ACTIVE")) {
@@ -71,10 +74,10 @@ public class AuthServiceImpl implements IAuthService {
         }
 
         if (!matches) {
-            throw new AppException(ErrorCode.UNAUTHENTICATED);
+            throw new AppException(ErrorCode.PASSWORD_INVALID);
         }
         String token = JwtProvider.generateJwtToken(user);
-        return new AuthResponse(token, "Login successfully");
+        return new AuthResponse(token, "Đăng nhập thành công");
     }
 
     // Kích hoạt tài khoản qua OTP
