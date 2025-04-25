@@ -6,6 +6,7 @@ import com.group8.busbookingbackend.dto.booking.request.BookingRequest;
 import com.group8.busbookingbackend.dto.booking.response.BookingResponse;
 import com.group8.busbookingbackend.entity.BookingEntity;
 import com.group8.busbookingbackend.entity.SeatEntity;
+import com.group8.busbookingbackend.security.JwtProvider;
 import com.group8.busbookingbackend.service.IBookingService;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,7 +52,9 @@ public class BookingController {
     }
 
     @GetMapping("/history")
-    public ApiResponse<List<BookingResponse>> getBookingHistory(@RequestParam ObjectId userId) {
+    public ApiResponse<List<BookingResponse>> getBookingHistory(@RequestHeader("Authorization") String authorizationHeader) {
+        String strUserId = JwtProvider.getUserIdFromToken(authorizationHeader);
+        ObjectId userId = new ObjectId(strUserId);
         return ApiResponse.success(bookingService.getBookingHistory(userId), "Fetching booking history successfully");
     }
 }

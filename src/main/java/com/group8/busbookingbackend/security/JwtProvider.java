@@ -23,6 +23,7 @@ public class JwtProvider
                 .issuedAt(new Date())
                 .subject(user.getEmail())
                 .claim("role", user.getRole().name())
+                .claim("id", user.getId().toString())
                 .expiration(new Date(Long.MAX_VALUE))
                 .signWith(key)
                 .compact();
@@ -36,5 +37,9 @@ public class JwtProvider
         return Jwts.parser()
                 .verifyWith(key).build().parseSignedClaims(jwtToken).getPayload();
 //        Claims claims = Jwts.parser().setSigningKey(key).build().parseClaimsJws(jwtToken).getBody();
+    }
+    public static String getUserIdFromToken(String jwtToken) {
+        Claims claims = introspect(jwtToken);
+        return claims.get("id", String.class);
     }
 }
