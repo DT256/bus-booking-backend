@@ -39,6 +39,10 @@ public class BookingServiceImpl implements IBookingService {
 
     private static final int PAYMENT_TIMEOUT_MINUTES = 30;
     private static final String REDIS_PREFIX = "seat:pending:";
+    @Autowired
+    private BusRepository busRepository;
+    @Autowired
+    private AddressRepository addressRepository;
 
     @Override
     public BookingEntity bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice,
@@ -185,24 +189,34 @@ public class BookingServiceImpl implements IBookingService {
     }
 
     private BookingResponse toBookingResponse(BookingEntity booking) {
+        TripEntity trip = tripRepository.findById(booking.getTripId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chuyến đi: " + booking.getTripId()));
+
+        BusEntity bus = busRepository.findById(trip.getBusId()).get();
+
         BookingResponse bookingResponse = new BookingResponse();
         bookingResponse.setId(booking.getId().toString());
-        bookingResponse.setTripId(booking.getTripId().toString());
         bookingResponse.setUserId(booking.getUserId().toString());
-        bookingResponse.setSeatIds(booking.getSeatIds().stream().map(ObjectId::toString).collect(Collectors.toList()));
+        bookingResponse.setBookingCode(booking.getBookingCode());
         bookingResponse.setTotalPrice(booking.getTotalPrice());
         bookingResponse.setStatus(booking.getStatus());
-        bookingResponse.setPaymentStatus(booking.getPaymentStatus());
-        bookingResponse.setPaymentMethod(booking.getPaymentMethod());
-        bookingResponse.setBookingCode(booking.getBookingCode());
-        bookingResponse.setPassengerDetail(booking.getPassengerDetail());
-        bookingResponse.setPickupPoint(booking.getPickupPoint());
-        bookingResponse.setDropoffPoint(booking.getDropoffPoint());
         bookingResponse.setCreatedAt(booking.getCreatedAt());
-        bookingResponse.setUpdatedAt(booking.getUpdatedAt());
+        bookingResponse.setDepartureTime(trip.getDepartureTime());
+        bookingResponse.setSeats(booking.getSeatIds().size());
+
+        // Lấy dữ liệu từ TripEntity
+        AddressEntity startPoint = addressRepository.findById(new ObjectId(booking.getPickupPoint().getLocationId())).get();
+        bookingResponse.setStartCity(startPoint.getCity());
+
+        AddressEntity endPoint = addressRepository.findById(new ObjectId(booking.getDropoffPoint().getLocationId())).get();
+        bookingResponse.setEndCity(endPoint.getCity());
+
+        // Ảnh xe buýt (nếu có)
+        bookingResponse.setBusImage(bus != null ? bus.getImageUrls().get(0) : null); // Nếu bus không null
 
         return bookingResponse;
     }
+
 
 
     // Lấy danh sách ghế còn trống của chuyến xe
