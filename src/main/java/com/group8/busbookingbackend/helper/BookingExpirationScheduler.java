@@ -22,7 +22,7 @@ public class BookingExpirationScheduler {
     @Scheduled(fixedRate = 60000) // Chạy mỗi 1 phút
     public void checkExpiredBookings() {
         List<BookingEntity> pendingBookings = bookingRepository.findAll().stream()
-                .filter(b -> b.getStatus() == BookingEntity.BookingStatus.PENDING)
+                .filter(b -> b.getPaymentStatus() == BookingEntity.PaymentStatus.PENDING)
                 .filter(b -> b.getCreatedAt().plusMinutes(30).isBefore(LocalDateTime.now()))
                 .toList();
 

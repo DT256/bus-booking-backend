@@ -143,7 +143,7 @@ public class BookingServiceImpl implements IBookingService {
         }
     }
 
-    public BookingEntity cancelBooking(String bookingCode) {
+    public BookingResponse cancelBooking(String bookingCode) {
         // Tìm booking theo bookingCode
         BookingEntity booking = bookingRepository.findByBookingCode(bookingCode).get();
         if (booking == null) {
@@ -185,7 +185,7 @@ public class BookingServiceImpl implements IBookingService {
         }
 
         // Lưu thay đổi
-        return bookingRepository.save(booking);
+        return this.toBookingResponse(bookingRepository.save(booking));
     }
 
     private BookingResponse toBookingResponse(BookingEntity booking) {

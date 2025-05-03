@@ -47,7 +47,7 @@ public class BookingController {
     }
 
     @PostMapping("/cancel")
-    public ApiResponse<BookingEntity> cancelBooking(@RequestParam String bookingCode) {
+    public ApiResponse<BookingResponse> cancelBooking(@RequestParam String bookingCode) {
         return ApiResponse.success(bookingService.cancelBooking(bookingCode), "Cancel booking successfully");
     }
 
