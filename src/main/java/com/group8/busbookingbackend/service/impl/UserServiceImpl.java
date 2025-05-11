@@ -14,6 +14,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -26,6 +27,8 @@ public class UserServiceImpl implements IUserService {
     private UserMapper userMapper;
     @Autowired
     private MongoTemplate mongoTemplate;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Override
     public UserResponse findUserResponseByEmail(String email) {
@@ -43,7 +46,8 @@ public class UserServiceImpl implements IUserService {
     @Override
     public boolean updatePassword(String email, String newPassword) {
         Query query = new Query(Criteria.where("email").is(email));
-        Update update = new Update().set("password", newPassword);
+        String password = (passwordEncoder.encode(newPassword));
+        Update update = new Update().set("password", password);
         UpdateResult result = mongoTemplate.updateFirst(query, update, User.class);
         return result.getModifiedCount() > 0;
     }
