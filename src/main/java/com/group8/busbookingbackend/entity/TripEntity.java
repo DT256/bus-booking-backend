@@ -27,6 +27,7 @@ public class TripEntity {
     private LocalDateTime arrivalTime;
     private double price;
     private TripStatus status;
+    private List<ObjectId> stopPointIds;
     @CreatedDate
     private LocalDateTime createdAt;
     @LastModifiedDate

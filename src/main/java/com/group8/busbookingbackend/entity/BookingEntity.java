@@ -33,8 +33,8 @@ public class BookingEntity {
     @Indexed(unique = true)
     private String bookingCode;
     private PassengerDetail passengerDetail;
-    private PickupDropoff pickupPoint;
-    private PickupDropoff dropoffPoint;
+    private ObjectId pickupStopPointId;
+    private ObjectId dropoffStopPointId;
     @CreatedDate
     private LocalDateTime createdAt;
     @LastModifiedDate
@@ -45,12 +45,6 @@ public class BookingEntity {
         private String fullName;
         private String phoneNumber;
         private String email;
-    }
-
-    @Data
-    public static class PickupDropoff {
-        private String locationId;
-        private LocalDateTime time;
     }
 
     public enum BookingStatus {

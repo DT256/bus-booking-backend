@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +32,8 @@ public class TripServiceImpl implements ITripService {
     private TripSeatRepository tripSeatRepository;
     @Autowired
     private AddressRepository addressRepository;
+    @Autowired
+    private StopPointRepository stopPointRepository;
 
     @Override
     public List<TripSearchResponse> searchTrips(TripSearchRequest request) {
@@ -143,6 +146,11 @@ public class TripServiceImpl implements ITripService {
         // Lấy danh sách trạng thái ghế
         List<TripSeatEntity> tripSeats = tripSeatRepository.findByTripId(id);
 
+        // Lấy danh sách điểm dừng
+        List<StopPointEntity> stopPoints = trip.getStopPointIds() != null ?
+                stopPointRepository.findAllById(trip.getStopPointIds()) :
+                Collections.emptyList();
+
         // Tạo DTO và ánh xạ dữ liệu
         TripDetailsResponse dto = new TripDetailsResponse();
         dto.setId(trip.getId().toString());
@@ -160,7 +168,6 @@ public class TripServiceImpl implements ITripService {
             SeatEntity seatEntity = seatRepository.findById(seat.getSeatId()).orElseThrow();
 
             TripDetailsResponse.SeatDetails seatDetails = new TripDetailsResponse.SeatDetails();
-            seatDetails.setId(seat.getId().toString());
             seatDetails.setSeatId(seat.getSeatId().toString());
             seatDetails.setSeatNumber(seatEntity.getSeatNumber());
             seatDetails.setFloor(seatEntity.getFloor());
@@ -169,8 +176,19 @@ public class TripServiceImpl implements ITripService {
         }).collect(Collectors.toList());
         dto.setSeats(seatDetailsList);
 
+        // Ánh xạ danh sách điểm dừng
+        List<TripDetailsResponse.StopPointDetails> stopPointDetailsList = stopPoints.stream().map(stopPoint -> {
+            TripDetailsResponse.StopPointDetails stopPointDetails = new TripDetailsResponse.StopPointDetails();
+            stopPointDetails.setId(stopPoint.getId().toString());
+            stopPointDetails.setName(stopPoint.getName());
+            stopPointDetails.setAddress(stopPoint.getAddress());
+            stopPointDetails.setOrderNumber(stopPoint.getOrderNumber());
+            stopPointDetails.setType(stopPoint.getType().name());
+            stopPointDetails.setEstimatedTime(stopPoint.getEstimatedTime());
+            return stopPointDetails;
+        }).collect(Collectors.toList());
+        dto.setStopPoints(stopPointDetailsList);
+
         return dto;
     }
-
-
 }

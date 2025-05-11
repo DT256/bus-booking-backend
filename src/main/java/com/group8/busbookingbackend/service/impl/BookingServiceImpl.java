@@ -1,6 +1,7 @@
 package com.group8.busbookingbackend.service.impl;
 
 import com.group8.busbookingbackend.dto.booking.response.BookingResponse;
+import com.group8.busbookingbackend.dto.booking.response.BookingDetailResponse;
 import com.group8.busbookingbackend.entity.*;
 import com.group8.busbookingbackend.repository.*;
 import com.group8.busbookingbackend.service.IBookingService;
@@ -11,11 +12,9 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 
 @Service
 public class BookingServiceImpl implements IBookingService {
@@ -43,22 +42,16 @@ public class BookingServiceImpl implements IBookingService {
     private BusRepository busRepository;
     @Autowired
     private AddressRepository addressRepository;
+    @Autowired
+    private StopPointRepository stopPointRepository;
 
     @Override
-    public BookingEntity bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice,
-                                    BookingEntity.PickupDropoff pickupPoint, BookingEntity.PickupDropoff dropoffPoint,
+    public BookingResponse bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice,
+                                  ObjectId pickupPoint, ObjectId dropoffPoint,
                                   BookingEntity.PassengerDetail passengerDetails) {
         List<TripSeatEntity> seats = tripSeatRepository.findByTripIdAndStatus(tripId, TripSeatEntity.SeatStatus.AVAILABLE);
         if (seats.size() < seatIds.size()) {
             throw new IllegalStateException("Không đủ ghế trống cho chuyến đi này");
-        }
-
-        // Kiểm tra pickup/dropoff
-        if (pickupPoint == null || dropoffPoint == null) {
-            throw new IllegalArgumentException("Điểm đón và trả không được để trống");
-        }
-        if (pickupPoint.getTime().isAfter(dropoffPoint.getTime())) {
-            throw new IllegalArgumentException("Thời gian đón phải trước thời gian trả");
         }
 
         String bookingCode = UUID.randomUUID().toString();
@@ -86,13 +79,13 @@ public class BookingServiceImpl implements IBookingService {
                 .paymentStatus(BookingEntity.PaymentStatus.PENDING)
                 .paymentMethod(BookingEntity.PaymentMethod.CASH)
                 .passengerDetail(passengerDetails)
-                .pickupPoint(pickupPoint)
-                .dropoffPoint(dropoffPoint)
+                .pickupStopPointId(pickupPoint)
+                .dropoffStopPointId(dropoffPoint)
                 .bookingCode(bookingCode)
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return bookingRepository.save(booking);
+        return toBookingResponse(bookingRepository.save(booking));
     }
 
     @Override
@@ -194,6 +187,12 @@ public class BookingServiceImpl implements IBookingService {
 
         BusEntity bus = busRepository.findById(trip.getBusId()).get();
 
+        // Get stop points
+        StopPointEntity pickupStopPoint = stopPointRepository.findById(booking.getPickupStopPointId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy điểm đón"));
+        StopPointEntity dropoffStopPoint = stopPointRepository.findById(booking.getDropoffStopPointId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy điểm trả"));
+
         BookingResponse bookingResponse = new BookingResponse();
         bookingResponse.setId(booking.getId().toString());
         bookingResponse.setUserId(booking.getUserId().toString());
@@ -204,20 +203,34 @@ public class BookingServiceImpl implements IBookingService {
         bookingResponse.setDepartureTime(trip.getDepartureTime());
         bookingResponse.setSeats(booking.getSeatIds().size());
 
-        // Lấy dữ liệu từ TripEntity
-        AddressEntity startPoint = addressRepository.findById(new ObjectId(booking.getPickupPoint().getLocationId())).get();
-        bookingResponse.setStartCity(startPoint.getCity());
+        // Set start and end cities from stop points
+        bookingResponse.setStartCity(pickupStopPoint.getAddress());
+        bookingResponse.setEndCity(dropoffStopPoint.getAddress());
 
-        AddressEntity endPoint = addressRepository.findById(new ObjectId(booking.getDropoffPoint().getLocationId())).get();
-        bookingResponse.setEndCity(endPoint.getCity());
-
-        // Ảnh xe buýt (nếu có)
-        bookingResponse.setBusImage(bus != null ? bus.getImageUrls().get(0) : null); // Nếu bus không null
+        // Set bus image
+        bookingResponse.setBusImage(bus != null ? bus.getImageUrls().get(0) : null);
 
         return bookingResponse;
     }
 
-
+    private BookingDetailResponse toBookingDetailResponse(BookingEntity booking) {
+        BookingDetailResponse response = new BookingDetailResponse();
+        response.setId(booking.getId().toString());
+        response.setTripId(booking.getTripId().toString());
+        response.setUserId(booking.getUserId().toString());
+        response.setSeatIds(booking.getSeatIds().stream().map(ObjectId::toString).toList());
+        response.setTotalPrice(booking.getTotalPrice());
+        response.setStatus(booking.getStatus());
+        response.setPaymentStatus(booking.getPaymentStatus());
+        response.setPaymentMethod(booking.getPaymentMethod());
+        response.setBookingCode(booking.getBookingCode());
+        response.setPassengerDetail(booking.getPassengerDetail());
+        response.setPickupStopPointId(booking.getPickupStopPointId().toString());
+        response.setDropoffStopPointId(booking.getDropoffStopPointId().toString());
+        response.setCreatedAt(booking.getCreatedAt());
+        response.setUpdatedAt(booking.getUpdatedAt());
+        return response;
+    }
 
     // Lấy danh sách ghế còn trống của chuyến xe
     public List<SeatEntity> getAvailableSeats(String tripId) {
@@ -239,6 +252,4 @@ public class BookingServiceImpl implements IBookingService {
 
         return bookings.stream().map(this::toBookingResponse).toList();
     }
-
-
 }
