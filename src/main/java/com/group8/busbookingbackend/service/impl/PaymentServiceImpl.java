@@ -36,6 +36,7 @@ public class PaymentServiceImpl implements IPaymentService {
         long amount = Integer.parseInt(request.getParameter("amount")) * 100L;
         String bankCode = request.getParameter("bankCode");
         String orderId = request.getParameter("orderId");
+
         Map<String, String> vnpParamsMap = vnPayConfig.getVNPayConfig(orderId);
         vnpParamsMap.put("vnp_Amount", String.valueOf(amount));
         if (bankCode != null && !bankCode.isEmpty()) {

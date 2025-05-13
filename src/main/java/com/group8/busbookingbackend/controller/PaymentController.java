@@ -48,7 +48,7 @@ public class PaymentController {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime localDateTime = LocalDateTime.parse(payDate, formatter);
 
-        ObjectId bookingId = new ObjectId(request.getParameter("bookingId"));
+        ObjectId bookingId = new ObjectId(request.getParameter("orderId"));
 
         if (status.equals("00")) {
             paymentService.handlePayBank(transactionNo, bankCode, transactionStatus, localDateTime, amount, bookingId);
