@@ -1,5 +1,6 @@
 package com.group8.busbookingbackend.service.impl;
 
+import com.group8.busbookingbackend.dto.booking.response.BookingResponse;
 import com.group8.busbookingbackend.dto.chatbot.ChatCompletionRequest;
 import com.group8.busbookingbackend.dto.chatbot.ChatCompletionResponse;
 import com.group8.busbookingbackend.dto.chatbot.ChatMessage;
@@ -8,6 +9,8 @@ import com.group8.busbookingbackend.entity.RouteEntity;
 import com.group8.busbookingbackend.repository.AddressRepository;
 import com.group8.busbookingbackend.repository.BookingRepository;
 import com.group8.busbookingbackend.repository.RouteRepository;
+import com.group8.busbookingbackend.repository.UserRepository;
+import com.group8.busbookingbackend.service.IBookingService;
 import com.group8.busbookingbackend.service.IChatbotService;
 import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
@@ -28,6 +31,7 @@ public class ChatbotServiceImpl implements IChatbotService {
     private final RouteRepository routeRepository;
     private final BookingRepository bookingRepository;
     private final AddressRepository addressRepository;
+    private final IBookingService bookingService;
 
     @Value("${openrouter.api.key}")
     private String openRouterApiKey;
@@ -43,10 +47,14 @@ public class ChatbotServiceImpl implements IChatbotService {
         // Phân tích nội dung tin nhắn để xác định intent
         if (content.toLowerCase().contains("tìm tuyến") || content.toLowerCase().contains("tìm chuyến")) {
             return handleRouteSearch(content);
-        } else if (content.toLowerCase().contains("đặt vé") || content.toLowerCase().contains("đặt chỗ")) {
-            return handleBookingRequest(content, userId);
         } else if (content.toLowerCase().contains("hủy vé") || content.toLowerCase().contains("hủy chuyến")) {
             return handleBookingCancellation(content, userId);
+        }
+        else if (content.toLowerCase().contains("xem vé")
+                || content.toLowerCase().contains("vé của tôi")
+                || content.toLowerCase().contains("xem lịch sử")
+                || content.toLowerCase().contains("xem đặt vé")) {
+            return handleViewBookings(userId);
         }
 
         // Nếu không phải intent đặc biệt, gửi đến OpenRouter API
@@ -111,117 +119,104 @@ public class ChatbotServiceImpl implements IChatbotService {
         }
     }
 
+    private ChatMessage handleViewBookings(ObjectId userId) {
+        List<BookingEntity> bookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(userId);
 
-    private ChatMessage handleBookingRequest(String content, ObjectId userId) {
-        // Trích xuất thông tin đặt vé
-        String routeId = extractRouteId(content);
-        String pickupTime = extractDateTime(content);
-        int numberOfPassengers = extractNumberOfPassengers(content);
-
-        if (routeId == null) {
+        if (bookings.isEmpty()) {
             return ChatMessage.builder()
                     .role("assistant")
-                    .content("Vui lòng cung cấp mã tuyến xe bạn muốn đặt. Ví dụ: 'Đặt vé tuyến R001'")
+                    .content("Bạn chưa có vé nào được đặt.")
                     .build();
         }
 
-        try {
-            // Kiểm tra tuyến xe có tồn tại và còn hoạt động không
-            RouteEntity route = routeRepository.findById(new ObjectId(routeId))
-                    .orElse(null);
+        StringBuilder response = new StringBuilder("Dưới đây là các vé bạn đã đặt:\n\n");
 
-            if (route == null || route.getStatus() != RouteEntity.RouteStatus.ACTIVE) {
-                return ChatMessage.builder()
-                        .role("assistant")
-                        .content("Xin lỗi, tuyến xe không tồn tại hoặc đã ngừng hoạt động.")
-                        .build();
-            }
+        for (BookingEntity booking : bookings) {
+            response.append("- Mã vé: ").append(booking.getBookingCode())
+                    .append("\n  Trạng thái: ").append(getStatusInVietnamese(booking.getStatus()))
+                    .append("\n  Ngày đặt: ").append(booking.getCreatedAt())
+                    .append("\n\n");
+        }
 
-            // Tạo booking mới
-            BookingEntity booking = BookingEntity.builder()
-                    .tripId(new ObjectId(routeId))
-                    .userId(userId)
-                    .status(BookingEntity.BookingStatus.PENDING)
-                    .paymentStatus(BookingEntity.PaymentStatus.PENDING)
-                    .createdAt(LocalDateTime.now())
-                    .build();
+        return ChatMessage.builder()
+                .role("assistant")
+                .content(response.toString())
+                .build();
+    }
 
-            bookingRepository.save(booking);
-
-            return ChatMessage.builder()
-                    .role("assistant")
-                    .content("Đặt vé thành công! Mã đặt vé của bạn là: " + booking.getBookingCode() +
-                            "\nVui lòng thanh toán trong vòng 30 phút để hoàn tất đặt vé.")
-                    .build();
-        } catch (IllegalArgumentException e) {
-            return ChatMessage.builder()
-                    .role("assistant")
-                    .content("Xin lỗi, mã tuyến xe không hợp lệ.")
-                    .build();
+    // Hàm chuyển đổi BookingStatus sang tiếng Việt
+    private String getStatusInVietnamese(BookingEntity.BookingStatus status) {
+        switch (status) {
+            case PENDING:
+                return "Đang chờ";
+            case CONFIRMED:
+                return "Đã xác nhận";
+            case CANCELLED:
+                return "Đã hủy";
+            case COMPLETED:
+                return "Đã hoàn thành";
+            default:
+                return status.toString(); // Fallback nếu có trạng thái không xác định
         }
     }
 
     private ChatMessage handleBookingCancellation(String content, ObjectId userId) {
-        // Trích xuất mã đặt vé
-        String bookingCode = extractBookingCode(content);
+        // Nếu chỉ có "hủy vé" mà không có mã
+        String[] tokens = content.trim().split("\\s+");
+        if (tokens.length <= 2) {
+            // Tìm các vé đang chờ xác nhận (PENDING)
+            List<BookingEntity> pendingBookings = bookingRepository.findByUserIdAndStatus(userId, BookingEntity.BookingStatus.PENDING);
 
-        if (bookingCode == null) {
+            if (pendingBookings.isEmpty()) {
+                return ChatMessage.builder()
+                        .role("assistant")
+                        .content("Hiện bạn không có vé nào đang chờ xác nhận để hủy.")
+                        .build();
+            }
+
+            StringBuilder response = new StringBuilder("Bạn đang có các vé **đang chờ xác nhận** sau:\n\n");
+            for (BookingEntity booking : pendingBookings) {
+                response.append("- Mã vé: ").append(booking.getBookingCode())
+                        .append("\n  Ngày đặt: ").append(booking.getCreatedAt())
+                        .append("\n\n");
+            }
+
+            response.append("Vui lòng nhập mã vé bạn muốn hủy. Ví dụ: *\"Hủy vé ABC123\"*");
+
             return ChatMessage.builder()
                     .role("assistant")
-                    .content("Vui lòng cung cấp mã đặt vé bạn muốn hủy. Ví dụ: 'Hủy vé B001'")
+                    .content(response.toString())
                     .build();
         }
 
+        // Trường hợp có mã vé
+        String bookingCode = tokens[2].toUpperCase();
+
         try {
-            // Tìm booking theo mã
-            BookingEntity booking = bookingRepository.findByBookingCode(bookingCode)
-                    .orElse(null);
-
-            if (booking == null) {
-                return ChatMessage.builder()
-                        .role("assistant")
-                        .content("Xin lỗi, không tìm thấy đặt vé với mã: " + bookingCode)
-                        .build();
-            }
-
-            // Kiểm tra xem người dùng có quyền hủy vé không
-            if (!booking.getUserId().toString().equals(userId)) {
-                return ChatMessage.builder()
-                        .role("assistant")
-                        .content("Xin lỗi, bạn không có quyền hủy đặt vé này.")
-                        .build();
-            }
-
-            // Kiểm tra trạng thái đặt vé
-            if (booking.getStatus() == BookingEntity.BookingStatus.CANCELLED) {
-                return ChatMessage.builder()
-                        .role("assistant")
-                        .content("Đặt vé này đã được hủy trước đó.")
-                        .build();
-            }
-
-            if (booking.getStatus() == BookingEntity.BookingStatus.COMPLETED) {
-                return ChatMessage.builder()
-                        .role("assistant")
-                        .content("Không thể hủy đặt vé đã hoàn thành.")
-                        .build();
-            }
-
-            // Hủy đặt vé
-            booking.setStatus(BookingEntity.BookingStatus.CANCELLED);
-            bookingRepository.save(booking);
+            BookingResponse response = bookingService.cancelBooking(bookingCode);
 
             return ChatMessage.builder()
                     .role("assistant")
-                    .content("Hủy đặt vé thành công! Mã đặt vé " + bookingCode + " đã được hủy.")
+                    .content("Vé **" + response.getBookingCode() + "** đã được hủy thành công." +
+                            "\n• Trạng thái: " + response.getStatus() +
+                            "\nCảm ơn bạn đã sử dụng dịch vụ!")
                     .build();
-        } catch (Exception e) {
+        } catch (IllegalArgumentException | IllegalStateException | SecurityException ex) {
             return ChatMessage.builder()
                     .role("assistant")
-                    .content("Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu hủy vé.")
+                    .content(ex.getMessage())
+                    .build();
+        } catch (Exception ex) {
+            ex.printStackTrace(); // Log nếu cần
+            return ChatMessage.builder()
+                    .role("assistant")
+                    .content("Đã xảy ra lỗi khi hủy vé. Vui lòng thử lại sau.")
                     .build();
         }
     }
+
+
+
 
     private ChatMessage getChatCompletion(String content) {
         List<ChatMessage> messages = new ArrayList<>();
@@ -301,30 +296,6 @@ public class ChatbotServiceImpl implements IChatbotService {
         }
         
         return null;
-    }
-
-    private String extractRouteId(String content) {
-        Pattern pattern = Pattern.compile("tuyến\\s*([A-Z0-9]+)");
-        Matcher matcher = pattern.matcher(content.toLowerCase());
-        return matcher.find() ? matcher.group(1) : null;
-    }
-
-    private String extractDateTime(String content) {
-        Pattern pattern = Pattern.compile("(\\d{1,2}/\\d{1,2}/\\d{4}\\s+\\d{1,2}:\\d{2})");
-        Matcher matcher = pattern.matcher(content);
-        return matcher.find() ? matcher.group(1) : null;
-    }
-
-    private int extractNumberOfPassengers(String content) {
-        Pattern pattern = Pattern.compile("(\\d+)\\s*người");
-        Matcher matcher = pattern.matcher(content.toLowerCase());
-        return matcher.find() ? Integer.parseInt(matcher.group(1)) : 1;
-    }
-
-    private String extractBookingCode(String content) {
-        Pattern pattern = Pattern.compile("([A-Z0-9]+)");
-        Matcher matcher = pattern.matcher(content);
-        return matcher.find() ? matcher.group(1) : null;
     }
 
 

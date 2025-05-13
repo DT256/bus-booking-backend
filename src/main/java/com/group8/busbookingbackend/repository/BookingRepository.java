@@ -21,6 +21,11 @@ public interface BookingRepository extends MongoRepository<BookingEntity, Object
     List<BookingEntity> findByTripId(ObjectId tripId);
     List<BookingEntity> findByStatus(BookingEntity.BookingStatus status);
     List<BookingEntity> findByPaymentStatus(BookingEntity.PaymentStatus paymentStatus);
+    boolean existsByBookingCode(String bookingCode);
+
+    List<BookingEntity> findByUserIdOrderByCreatedAtDesc(ObjectId userId);
+    List<BookingEntity> findByUserIdAndStatus(ObjectId userId, BookingEntity.BookingStatus status);
+
 
     @Aggregation(pipeline = {
             "{ '$lookup': { 'from': 'trips', 'localField': 'tripId', 'foreignField': '_id', 'as': 'tripDetails' } }",
