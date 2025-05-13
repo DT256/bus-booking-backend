@@ -35,6 +35,9 @@ public class ChatbotServiceImpl implements IChatbotService {
     @Value("${openrouter.api.url}")
     private String openRouterApiUrl;
 
+    @Value("${openrouter.api.model}")
+    private String model;
+
     @Override
     public ChatMessage processMessage(ObjectId userId, String content) {
         // Phân tích nội dung tin nhắn để xác định intent
@@ -51,7 +54,6 @@ public class ChatbotServiceImpl implements IChatbotService {
     }
 
     private ChatMessage handleRouteSearch(String content) {
-        // Trích xuất điểm đi và điểm đến từ nội dung tin nhắn
         System.out.println(content);
         String startPoint = extractLocation(content, "từ", "đến");
         String endPoint = extractLocation(content, "đến", null);
@@ -66,19 +68,30 @@ public class ChatbotServiceImpl implements IChatbotService {
         }
 
         try {
-            // Tìm kiếm tuyến xe phù hợp dựa trên tên địa điểm
+            // Kiểm tra địa chỉ có tồn tại trong DB không
+            var startAddress = addressRepository.findByCity(startPoint);
+            var endAddress = addressRepository.findByCity(endPoint);
+
+            if (startAddress == null || endAddress == null) {
+                return ChatMessage.builder()
+                        .role("assistant")
+                        .content("Xin lỗi, chúng tôi hiện chưa hỗ trợ tuyến đường từ " + capitalizeLocation(startPoint) + " đến " + capitalizeLocation(endPoint) + ".")
+                        .build();
+            }
+
+            // Tìm các tuyến xe phù hợp
             List<RouteEntity> routes = routeRepository.findByStartPointAndEndPoint(
-                    addressRepository.findByCity(startPoint).getId(),
-                    addressRepository.findByCity(endPoint).getId());
+                    startAddress.getId(),
+                    endAddress.getId()
+            );
 
             if (routes.isEmpty()) {
                 return ChatMessage.builder()
                         .role("assistant")
-                        .content("Xin lỗi, không tìm thấy tuyến xe nào từ " + startPoint + " đến " + endPoint)
+                        .content("Xin lỗi, chúng tôi hiện chưa hỗ trợ tuyến đường từ " + capitalizeLocation(startPoint) + " đến " + capitalizeLocation(endPoint) + ".")
                         .build();
             }
 
-            // Tạo danh sách tuyến xe
             StringBuilder response = new StringBuilder("Tôi đã tìm thấy các tuyến xe sau:\n\n");
             for (RouteEntity route : routes) {
                 response.append("- Tuyến: ").append(route.getDescription())
@@ -97,6 +110,7 @@ public class ChatbotServiceImpl implements IChatbotService {
                     .build();
         }
     }
+
 
     private ChatMessage handleBookingRequest(String content, ObjectId userId) {
         // Trích xuất thông tin đặt vé
@@ -215,9 +229,9 @@ public class ChatbotServiceImpl implements IChatbotService {
                 .role("user")
                 .content(content)
                 .build());
-
+        System.out.println("model = " + model);
         ChatCompletionRequest request = ChatCompletionRequest.builder()
-                .model("deepseek/deepseek-prover-v2:free")
+                .model(model)
                 .messages(messages)
                 .temperature(0.7)
                 .max_tokens(2000)
@@ -240,6 +254,23 @@ public class ChatbotServiceImpl implements IChatbotService {
                 .content("Xin lỗi, tôi không thể xử lý yêu cầu của bạn lúc này.")
                 .build();
     }
+
+
+    private String capitalizeLocation(String location) {
+        if (location == null || location.isBlank()) return location;
+
+        String[] words = location.trim().split("\\s+");
+        StringBuilder result = new StringBuilder();
+        for (String word : words) {
+            if (word.length() > 0) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                        .append(word.substring(1).toLowerCase())
+                        .append(" ");
+            }
+        }
+        return result.toString().trim();
+    }
+
 
     // Các phương thức hỗ trợ
     private String extractLocation(String content, String startMarker, String endMarker) {
@@ -295,4 +326,6 @@ public class ChatbotServiceImpl implements IChatbotService {
         Matcher matcher = pattern.matcher(content);
         return matcher.find() ? matcher.group(1) : null;
     }
+
+
 } 
