@@ -11,8 +11,10 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -44,6 +46,8 @@ public class BookingServiceImpl implements IBookingService {
     private AddressRepository addressRepository;
     @Autowired
     private StopPointRepository stopPointRepository;
+    @Autowired
+    private RouteRepository routeRepository;
 
     @Override
     public BookingResponse bookTrip(ObjectId userId, ObjectId tripId, List<ObjectId> seatIds, BigDecimal totalPrice,
@@ -54,7 +58,7 @@ public class BookingServiceImpl implements IBookingService {
             throw new IllegalStateException("Không đủ ghế trống cho chuyến đi này");
         }
 
-        String bookingCode = UUID.randomUUID().toString();
+        String bookingCode = generateUniqueBookingCode(6);
 
         for (ObjectId seatId : seatIds) {
             String redisKey = REDIS_PREFIX + tripId + ":" + seatId;
@@ -136,62 +140,59 @@ public class BookingServiceImpl implements IBookingService {
         }
     }
 
+    @Override
     public BookingResponse cancelBooking(String bookingCode) {
-        // Tìm booking theo bookingCode
-        BookingEntity booking = bookingRepository.findByBookingCode(bookingCode).get();
-        if (booking == null) {
-            throw new IllegalArgumentException("Không tìm thấy đặt vé với mã: " + bookingCode);
-        }
+        // 1. Tìm booking theo bookingCode
+        BookingEntity booking = bookingRepository.findByBookingCode(bookingCode)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy vé với mã: " + bookingCode));
 
-        // Kiểm tra trạng thái booking
+        // 2. Kiểm tra trạng thái vé
         if (booking.getStatus() == BookingEntity.BookingStatus.CANCELLED) {
             throw new IllegalStateException("Vé đã bị hủy trước đó");
         }
         if (booking.getStatus() == BookingEntity.BookingStatus.COMPLETED) {
-            throw new IllegalStateException("Không thể hủy vé đã hoàn thành");
+            throw new IllegalStateException("Không thể hủy vé vì vé đã hoàn thành");
         }
 
-        // Kiểm tra thời gian khởi hành của chuyến đi
+        // 3. Kiểm tra thời gian khởi hành
         TripEntity trip = tripRepository.findById(booking.getTripId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chuyến đi: " + booking.getTripId()));
         if (LocalDateTime.now().isAfter(trip.getDepartureTime())) {
             throw new IllegalStateException("Không thể hủy vé sau khi chuyến đi đã khởi hành");
         }
 
-        // Cập nhật trạng thái booking
+        // 4. Cập nhật trạng thái vé
         booking.setStatus(BookingEntity.BookingStatus.CANCELLED);
         if (booking.getPaymentStatus() == BookingEntity.PaymentStatus.PAID) {
-            booking.setPaymentStatus(BookingEntity.PaymentStatus.REFUNDED); // Nếu đã thanh toán, đánh dấu hoàn tiền
+            booking.setPaymentStatus(BookingEntity.PaymentStatus.REFUNDED);
         }
 
-        // Giải phóng ghế
-        List<ObjectId> seatIds = booking.getSeatIds();
-        for (ObjectId seatId : seatIds) {
+        // 5. Giải phóng ghế đã giữ
+        for (ObjectId seatId : booking.getSeatIds()) {
             String redisKey = REDIS_PREFIX + booking.getTripId() + ":" + seatId;
-            redisTemplate.delete(redisKey); // Xóa dữ liệu tạm trong Redis (nếu có)
+            redisTemplate.delete(redisKey);
 
             TripSeatEntity seat = tripSeatRepository.findByTripIdAndSeatId(booking.getTripId(), seatId);
-            if (seat != null) {
+            if (seat != null && seat.getStatus() != TripSeatEntity.SeatStatus.AVAILABLE) {
                 seat.setStatus(TripSeatEntity.SeatStatus.AVAILABLE);
                 tripSeatRepository.save(seat);
             }
         }
 
-        // Lưu thay đổi
-        return this.toBookingResponse(bookingRepository.save(booking));
+        // 7. Lưu thay đổi & trả kết quả
+        return toBookingResponse(bookingRepository.save(booking));
     }
+
+
 
     private BookingResponse toBookingResponse(BookingEntity booking) {
         TripEntity trip = tripRepository.findById(booking.getTripId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy chuyến đi: " + booking.getTripId()));
 
-        BusEntity bus = busRepository.findById(trip.getBusId()).get();
+        RouteEntity route = routeRepository.findById(trip.getRouteId())
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy tuyến đường: " + trip.getRouteId()));
 
-        // Get stop points
-        StopPointEntity pickupStopPoint = stopPointRepository.findById(booking.getPickupStopPointId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy điểm đón"));
-        StopPointEntity dropoffStopPoint = stopPointRepository.findById(booking.getDropoffStopPointId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy điểm trả"));
+        BusEntity bus = busRepository.findById(trip.getBusId()).get();
 
         BookingResponse bookingResponse = new BookingResponse();
         bookingResponse.setId(booking.getId().toString());
@@ -204,8 +205,8 @@ public class BookingServiceImpl implements IBookingService {
         bookingResponse.setSeats(booking.getSeatIds().size());
 
         // Set start and end cities from stop points
-        bookingResponse.setStartCity(pickupStopPoint.getAddress());
-        bookingResponse.setEndCity(dropoffStopPoint.getAddress());
+        bookingResponse.setStartCity(addressRepository.findById(route.getStartPoint()).get().getCity());
+        bookingResponse.setEndCity(addressRepository.findById(route.getEndPoint()).get().getCity());
 
         // Set bus image
         bookingResponse.setBusImage(bus != null ? bus.getImageUrls().get(0) : null);
@@ -252,4 +253,22 @@ public class BookingServiceImpl implements IBookingService {
 
         return bookings.stream().map(this::toBookingResponse).toList();
     }
+
+    private String generateUniqueBookingCode(int length) {
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        Random random = new SecureRandom();
+
+        String code;
+        do {
+            StringBuilder builder = new StringBuilder();
+            for (int i = 0; i < length; i++) {
+                builder.append(chars.charAt(random.nextInt(chars.length())));
+            }
+            code = builder.toString();
+        } while (bookingRepository.existsByBookingCode(code));
+
+        return code;
+    }
+
+
 }

@@ -15,7 +15,7 @@ public interface IBookingService {
                                           BookingEntity.PassengerDetail passengerDetails);
     public void cancelExpiredBooking(String bookingCode);
     public BookingEntity confirmPayment(String bookingCode);
-    public BookingResponse cancelBooking(String bookingId);
+    public BookingResponse cancelBooking(String bookingCode);
     public List<SeatEntity> getAvailableSeats(String tripId);
     public List<BookingResponse> getBookingHistory(ObjectId userId);
 }
