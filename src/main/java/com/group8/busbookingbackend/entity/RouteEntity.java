@@ -21,7 +21,7 @@ public class RouteEntity{
     private ObjectId id;
     private ObjectId startPoint;
     private ObjectId endPoint;
-    private int distance;
+    private double distance;
     private double duration;
     private String description;
     private RouteStatus status;
@@ -31,6 +31,6 @@ public class RouteEntity{
     @LastModifiedDate
     private LocalDateTime updatedAt;
     public enum RouteStatus {
-        ACTIVE, INACTIVE
+        ACTIVE, INACTIVE, DELETED
     }
 }
