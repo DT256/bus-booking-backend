@@ -37,6 +37,7 @@ public class PaymentController {
 
     @GetMapping("/vn-pay-callback")
     public ResponseEntity<ApiResponse<String>> bankPayCallbackHandler(HttpServletRequest request) {
+        System.out.println("bankPayCallbackHandler");
         String status = request.getParameter("vnp_ResponseCode");
         String transactionNo = request.getParameter("vnp_TransactionNo");
         String bankCode = request.getParameter("vnp_BankCode");
@@ -47,8 +48,11 @@ public class PaymentController {
         String payDate = request.getParameter("vnp_PayDate");
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
         LocalDateTime localDateTime = LocalDateTime.parse(payDate, formatter);
+        System.out.println(request.getParameter("orderid"));
+        ObjectId bookingId = new ObjectId(request.getParameter("orderid"));
 
-        ObjectId bookingId = new ObjectId(request.getParameter("orderId"));
+        System.out.println("bookingId: " + bookingId);
+        System.out.println("bookingId: " + bankCode);
 
         if (status.equals("00")) {
             paymentService.handlePayBank(transactionNo, bankCode, transactionStatus, localDateTime, amount, bookingId);

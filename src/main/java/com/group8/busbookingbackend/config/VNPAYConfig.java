@@ -31,7 +31,7 @@ public class VNPAYConfig {
     @Value("${payment.vnpay.orderType}")
     private String orderType;
 
-    public Map<String, String> getVNPayConfig(String orderId) {
+    public Map<String, String> getVNPayConfig(String orderId, String baseUrl) {
         Map<String, String> vnpParamsMap = new HashMap<>();
 
         // Thông tin cấu hình VNPay
@@ -43,7 +43,7 @@ public class VNPAYConfig {
         vnpParamsMap.put("vnp_OrderInfo", "Thanh toán đơn hàng:" + VNPayUtil.getRandomNumber(8));
         vnpParamsMap.put("vnp_OrderType", this.orderType);
         vnpParamsMap.put("vnp_Locale", "vn");
-        vnpParamsMap.put("vnp_ReturnUrl", this.vnp_ReturnUrl + "?orderid=" + orderId);
+        vnpParamsMap.put("vnp_ReturnUrl", baseUrl + this.vnp_ReturnUrl + "?orderid=" + orderId);
 
         // Định dạng thời gian với múi giờ Việt Nam
         SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
