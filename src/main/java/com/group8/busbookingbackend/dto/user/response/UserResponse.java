@@ -11,10 +11,19 @@ public class UserResponse {
     private String lastName;
     private String username;
     private String email;
-    private String description;
+    private Address address;
+    private String phoneNumber;
     private Boolean gender;
     private String avatarUrl;
-    private String coverPhotoUrl;
     private Role role;
+
+
+    @Data
+    public static class Address{
+        private String city;
+        private String district;
+        private String commune;
+        private String other;
+    }
 
 }
