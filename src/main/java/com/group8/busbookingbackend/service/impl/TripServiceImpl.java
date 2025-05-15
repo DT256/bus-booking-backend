@@ -174,6 +174,7 @@ public class TripServiceImpl implements ITripService {
         dto.setLicensePlate(bus.getLicensePlate());
         dto.setCapacity(bus.getCapacity());
         dto.setDepartureTime(trip.getDepartureTime());
+        dto.setArrivalTime(trip.getArrivalTime());
         dto.setPrice(trip.getPrice());
         dto.setStatus(trip.getStatus().name());
         dto.setStartPointCity(startAddress.getCity());
