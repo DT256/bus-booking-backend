@@ -78,7 +78,7 @@ public class AuthServiceImpl implements IAuthService {
             throw new AppException(ErrorCode.PASSWORD_INVALID);
         }
         String token = JwtProvider.generateJwtToken(user);
-        return new LoginResponse(token, "Đăng nhập thành công",user.getUsername());
+        return new LoginResponse(token, "Đăng nhập thành công",user.getUsername(),user.getAvatarUrl(), user.getPhoneNumber(),user.getGender(),user.getDateOfBirth());
     }
 
     // Kích hoạt tài khoản qua OTP
