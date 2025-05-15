@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
@@ -129,6 +130,7 @@ public class BookingServiceImpl implements IBookingService {
         BookingEntity booking = bookingRepository.findByBookingCode(bookingCode).get();
         if (booking != null && booking.getPaymentStatus() == BookingEntity.PaymentStatus.PENDING) {
             booking.setStatus(BookingEntity.BookingStatus.CANCELLED);
+            booking.setPaymentStatus(BookingEntity.PaymentStatus.REFUNDED);
             bookingRepository.save(booking);
 
             for (ObjectId seatId : booking.getSeatIds()) {
@@ -202,9 +204,20 @@ public class BookingServiceImpl implements IBookingService {
         bookingResponse.setBookingCode(booking.getBookingCode());
         bookingResponse.setTotalPrice(booking.getTotalPrice());
         bookingResponse.setStatus(booking.getStatus());
+        bookingResponse.setPaymentStatus(booking.getPaymentStatus());
         bookingResponse.setCreatedAt(booking.getCreatedAt());
         bookingResponse.setDepartureTime(trip.getDepartureTime());
+        bookingResponse.setArrivalTime(trip.getArrivalTime());
         bookingResponse.setSeats(booking.getSeatIds().size());
+
+        List<String> seatNumbers = new ArrayList<>();
+        for (ObjectId seatId : booking.getSeatIds()) {
+            SeatEntity seat = seatRepository.findById(seatId).orElse(null);
+            if (seat != null) {
+                seatNumbers.add(seat.getSeatNumber());
+            }
+        }
+        bookingResponse.setSeatNames(seatNumbers);
 
         // Set start and end cities from stop points
         bookingResponse.setStartCity(addressRepository.findById(route.getStartPoint()).get().getCity());

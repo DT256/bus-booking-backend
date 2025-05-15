@@ -15,10 +15,13 @@ public class BookingResponse {
     private String startCity;
     private String endCity;
     private int seats;
+    private List<String> seatNames;
     private BigDecimal totalPrice;
     private BookingEntity.BookingStatus status;
+    private BookingEntity.PaymentStatus paymentStatus;
     private String bookingCode;
     private LocalDateTime createdAt;
     private LocalDateTime departureTime;
+    private LocalDateTime arrivalTime;
 
 }

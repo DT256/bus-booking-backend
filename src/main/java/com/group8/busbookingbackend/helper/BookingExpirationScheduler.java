@@ -26,16 +26,14 @@ public class BookingExpirationScheduler {
     public void checkExpiredBookings() {
         ZoneId zoneId = ZoneId.of("Asia/Ho_Chi_Minh");
         ZonedDateTime now = ZonedDateTime.now(zoneId);
-
+        List<BookingEntity> pendingBooking = bookingRepository.findAll();
         List<BookingEntity> pendingBookings = bookingRepository.findAll().stream()
                 .filter(b -> b.getPaymentStatus() == BookingEntity.PaymentStatus.PENDING)
                 .filter(b -> b.getCreatedAt()
-                        .atZone(ZoneOffset.UTC) // assume Mongo stores in UTC
-                        .withZoneSameInstant(zoneId) // convert to local time
                         .plusMinutes(30)
-                        .isBefore(now))
+                        .isBefore(LocalDateTime.now()))
                 .toList();
-
+        System.out.println("Current time: {}"+ now);
         for (BookingEntity booking : pendingBookings) {
             bookingService.cancelExpiredBooking(booking.getBookingCode());
         }
