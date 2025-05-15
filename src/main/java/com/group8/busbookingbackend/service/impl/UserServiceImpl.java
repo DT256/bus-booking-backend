@@ -21,10 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements IUserService {
@@ -105,9 +102,10 @@ public class UserServiceImpl implements IUserService {
         response.setEmail(user.getEmail());
         response.setPhoneNumber(user.getPhoneNumber());
         response.setUsername(user.getUsername());
-        response.setGender("Nam".equalsIgnoreCase(user.getGender()));
+        response.setGender(user.getGender());
         response.setAvatarUrl(user.getAvatarUrl());
         response.setRole(user.getRole());
+        response.setDateOfBirth(user.getDateOfBirth());
 
         if (user.getAddress() != null) {
             UserResponse.Address address = new UserResponse.Address();
@@ -125,6 +123,25 @@ public class UserServiceImpl implements IUserService {
         User user = userRepository.findById(userId).orElseThrow(()->
                 new AppException(ErrorCode.USER_NOT_EXIST));
         return userMapper.toUserResponse(user);
+    }
+
+    @Override
+    public boolean changePassword(ObjectId userId, String oldPassword, String newPassword) {
+        Optional<User> userOptional = userRepository.findById(userId);
+        if (!userOptional.isPresent()) {
+            throw new RuntimeException("User not found");
+        }
+
+        User user = userOptional.get();
+        // Kiểm tra mật khẩu cũ
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            return false;
+        }
+
+        // Mã hóa và lưu mật khẩu mới
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        return true;
     }
 
 }

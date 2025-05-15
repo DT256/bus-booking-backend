@@ -4,6 +4,8 @@ package com.group8.busbookingbackend.dto.user.response;
 import com.group8.busbookingbackend.entity.Role;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 public class UserResponse {
     private String userId;
@@ -13,8 +15,9 @@ public class UserResponse {
     private String email;
     private Address address;
     private String phoneNumber;
-    private Boolean gender;
+    private String gender;
     private String avatarUrl;
+    private LocalDateTime dateOfBirth;
     private Role role;
 
 

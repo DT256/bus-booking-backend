@@ -3,6 +3,7 @@ package com.group8.busbookingbackend.controller;
 import com.group8.busbookingbackend.dto.ApiResponse;
 import com.group8.busbookingbackend.dto.review.request.ReviewRequest;
 import com.group8.busbookingbackend.dto.review.response.ReviewResponse;
+import com.group8.busbookingbackend.dto.user.request.ChangePasswordRequest;
 import com.group8.busbookingbackend.dto.user.request.UpdateUserRequest;
 import com.group8.busbookingbackend.dto.user.response.UserResponse;
 import com.group8.busbookingbackend.entity.User;
@@ -59,6 +60,60 @@ public class UserController {
         return ApiResponse.success(responseDto, "Profile updated successfully");
     }
 
+    // API 1: Lưu avatar riêng
+    @PutMapping(value = "/avatar", consumes = {"multipart/form-data"})
+    public ApiResponse<UserResponse> updateAvatar(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestPart("avatar") MultipartFile avatar) {
+        String strUserId = JwtProvider.getUserIdFromToken(authorizationHeader);
+        ObjectId userId = new ObjectId(strUserId);
 
+        if (avatar == null || avatar.isEmpty()) {
+            return ApiResponse.error( 400, "Avatar file is required", null);
+        }
+
+        UpdateUserRequest requestDto = new UpdateUserRequest();
+        requestDto.setAvatar(avatar);
+
+        UserResponse responseDto = userServiceImpl.updateUser(userId, requestDto);
+        return ApiResponse.success(responseDto, "Avatar updated successfully");
+    }
+
+    // API 2: Lưu thông tin cá nhân (họ tên, số điện thoại, ngày sinh, giới tính)
+    @PutMapping("/personal-info")
+    public ApiResponse<UserResponse> updatePersonalInfo(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody UpdateUserRequest requestDto) {
+        String strUserId = JwtProvider.getUserIdFromToken(authorizationHeader);
+        ObjectId userId = new ObjectId(strUserId);
+
+        // Đảm bảo chỉ cập nhật các trường thông tin cá nhân, không bao gồm avatar
+        requestDto.setAvatar(null);
+
+        UserResponse responseDto = userServiceImpl.updateUser(userId, requestDto);
+        return ApiResponse.success(responseDto, "Personal info updated successfully");
+    }
+
+    // API 3: Đổi mật khẩu
+    @PutMapping("/change-password")
+    public ApiResponse<String> changePassword(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody ChangePasswordRequest changePasswordRequest) {
+        String strUserId = JwtProvider.getUserIdFromToken(authorizationHeader);
+        ObjectId userId = new ObjectId(strUserId);
+
+        if (!changePasswordRequest.getNewPassword().equals(changePasswordRequest.getConfirmNewPassword())) {
+            return ApiResponse.error(400,"New password and confirmation do not match", null);
+        }
+
+        boolean success = userServiceImpl.changePassword(userId, changePasswordRequest.getOldPassword(),
+                changePasswordRequest.getNewPassword());
+
+        if (success) {
+            return ApiResponse.success("Password changed successfully", "Password changed successfully");
+        } else {
+            return ApiResponse.error(400,"Old password is incorrect",null);
+        }
+    }
 
 }

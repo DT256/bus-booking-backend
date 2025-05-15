@@ -12,4 +12,5 @@ public interface IUserService {
     UserResponse updateUser(ObjectId userId, UpdateUserRequest updatedUser);
 
     UserResponse findUserById(ObjectId userId);
+    boolean changePassword(ObjectId userId, String oldPassword, String newPassword);
 }
