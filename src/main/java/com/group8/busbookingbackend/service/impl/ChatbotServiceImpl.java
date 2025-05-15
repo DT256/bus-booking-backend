@@ -4,6 +4,7 @@ import com.group8.busbookingbackend.dto.booking.response.BookingResponse;
 import com.group8.busbookingbackend.dto.chatbot.ChatCompletionRequest;
 import com.group8.busbookingbackend.dto.chatbot.ChatCompletionResponse;
 import com.group8.busbookingbackend.dto.chatbot.ChatMessage;
+import com.group8.busbookingbackend.entity.AddressEntity;
 import com.group8.busbookingbackend.entity.BookingEntity;
 import com.group8.busbookingbackend.entity.RouteEntity;
 import com.group8.busbookingbackend.repository.AddressRepository;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -62,11 +64,9 @@ public class ChatbotServiceImpl implements IChatbotService {
     }
 
     private ChatMessage handleRouteSearch(String content) {
-        System.out.println(content);
+
         String startPoint = extractLocation(content, "từ", "đến");
         String endPoint = extractLocation(content, "đến", null);
-        System.out.println(startPoint);
-        System.out.println(endPoint);
 
         if (startPoint == null || endPoint == null) {
             return ChatMessage.builder()
@@ -76,27 +76,35 @@ public class ChatbotServiceImpl implements IChatbotService {
         }
 
         try {
-            // Kiểm tra địa chỉ có tồn tại trong DB không
-            var startAddress = addressRepository.findByCity(startPoint);
-            var endAddress = addressRepository.findByCity(endPoint);
+            // Find all addresses for start and end cities
+            List<AddressEntity> startAddresses = addressRepository.findByCity(startPoint);
+            List<AddressEntity> endAddresses = addressRepository.findByCity(endPoint);
 
-            if (startAddress == null || endAddress == null) {
+            if (startAddresses.isEmpty() || endAddresses.isEmpty()) {
                 return ChatMessage.builder()
                         .role("assistant")
-                        .content("Xin lỗi, chúng tôi hiện chưa hỗ trợ tuyến đường từ " + capitalizeLocation(startPoint) + " đến " + capitalizeLocation(endPoint) + ".")
+                        .content("Xin lỗi, chúng tôi hiện chưa hỗ trợ tuyến đường từ " +
+                                capitalizeLocation(startPoint) + " đến " + capitalizeLocation(endPoint) + ".")
                         .build();
             }
 
-            // Tìm các tuyến xe phù hợp
-            List<RouteEntity> routes = routeRepository.findByStartPointAndEndPoint(
-                    startAddress.getId(),
-                    endAddress.getId()
-            );
+            // Collect all possible start and end point ObjectIds
+            List<ObjectId> startPointIds = startAddresses.stream()
+                    .map(AddressEntity::getId)
+                    .collect(Collectors.toList());
+            List<ObjectId> endPointIds = endAddresses.stream()
+                    .map(AddressEntity::getId)
+                    .collect(Collectors.toList());
+
+            // Find routes matching any combination of start and end points with status ACTIVE
+            List<RouteEntity> routes = routeRepository.findByStartPointInAndEndPointInAndStatus(
+                    startPointIds, endPointIds, RouteEntity.RouteStatus.ACTIVE);
 
             if (routes.isEmpty()) {
                 return ChatMessage.builder()
                         .role("assistant")
-                        .content("Xin lỗi, chúng tôi hiện chưa hỗ trợ tuyến đường từ " + capitalizeLocation(startPoint) + " đến " + capitalizeLocation(endPoint) + ".")
+                        .content("Xin lỗi, chúng tôi hiện chưa hỗ trợ tuyến đường từ " +
+                                capitalizeLocation(startPoint) + " đến " + capitalizeLocation(endPoint) + ".")
                         .build();
             }
 

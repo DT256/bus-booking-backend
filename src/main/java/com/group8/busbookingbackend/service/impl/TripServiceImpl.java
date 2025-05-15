@@ -37,51 +37,67 @@ public class TripServiceImpl implements ITripService {
 
     @Override
     public List<TripSearchResponse> searchTrips(TripSearchRequest request) {
-        // Tìm các tuyến đường phù hợp
-        List<RouteEntity> routes = routeRepository.findByStartPointAndEndPoint(
-                addressRepository.findByCity(request.getStartCity()).getId(),
-                addressRepository.findByCity(request.getEndCity()).getId());
-        System.out.println(routes.size());
+        // Find all addresses for start and end cities
+        List<AddressEntity> startAddresses = addressRepository.findByCity(request.getStartCity());
+        List<AddressEntity> endAddresses = addressRepository.findByCity(request.getEndCity());
+
+        if (startAddresses.isEmpty() || endAddresses.isEmpty()) {
+            System.out.println("No addresses found for startCity: " + request.getStartCity() +
+                    " or endCity: " + request.getEndCity());
+            return new ArrayList<>();
+        }
+
+        // Collect all possible start and end point ObjectIds
+        List<ObjectId> startPointIds = startAddresses.stream()
+                .map(AddressEntity::getId)
+                .collect(Collectors.toList());
+        List<ObjectId> endPointIds = endAddresses.stream()
+                .map(AddressEntity::getId)
+                .collect(Collectors.toList());
+
+        // Find routes matching any combination of start and end points
+        List<RouteEntity> routes = routeRepository.findByStartPointInAndEndPointInAndStatus(startPointIds, endPointIds, RouteEntity.RouteStatus.ACTIVE);
+        System.out.println("Found " + routes.size() + " routes");
         if (routes.isEmpty()) {
             return new ArrayList<>();
         }
 
-        // Thiết lập khoảng thời gian trong ngày để lọc chuyến theo ngày
+        // Set time range for filtering trips by date
         LocalDateTime startOfDay = request.getDepartureDate().withHour(0).withMinute(0).withSecond(0);
         LocalDateTime endOfDay = startOfDay.plusDays(1);
 
         List<TripSearchResponse> result = new ArrayList<>();
 
         for (RouteEntity route : routes) {
-            // Tìm chuyến đi theo route và thời gian
+            // Find trips for the route and time range
             List<TripEntity> trips = tripRepository.findByRouteIdAndDepartureTimeRange(
                     route.getId(), startOfDay, endOfDay);
 
             for (TripEntity trip : trips) {
-                // Lấy thông tin xe
+                // Get bus information
                 BusEntity bus = busRepository.findById(trip.getBusId())
                         .orElseThrow(() -> new RuntimeException("Bus not found"));
 
-                // Đếm số ghế trống
+                // Count available seats
                 int availableSeats = tripSeatRepository.findAvailableSeatsByTrip(trip.getId()).size();
 
-                // Xác định loại ghế (giả sử tất cả ghế cùng loại)
+                // Determine bus type (assume all seats are of the same type)
                 List<SeatEntity> allSeats = seatRepository.findByBusId(trip.getBusId());
                 String busType = allSeats.isEmpty() ? "UNKNOWN" : allSeats.get(0).getType().toString();
 
-                // Lọc theo điều kiện tìm kiếm
+                // Filter based on search criteria
                 if (request.getMinPrice() != null && trip.getPrice() < request.getMinPrice()) continue;
                 if (request.getMaxPrice() != null && trip.getPrice() > request.getMaxPrice()) continue;
                 if (request.getMinAvailableSeats() != null && availableSeats < request.getMinAvailableSeats()) continue;
                 if (request.getBusType() != null && !request.getBusType().equalsIgnoreCase(busType)) continue;
 
-                // Lấy thành phố bắt đầu/kết thúc từ địa chỉ
+                // Get start and end city names
                 String startCity = addressRepository.findById(route.getStartPoint())
                         .map(AddressEntity::getCity).orElse("UNKNOWN");
                 String endCity = addressRepository.findById(route.getEndPoint())
                         .map(AddressEntity::getCity).orElse("UNKNOWN");
 
-                // Tạo DTO kết quả
+                // Create result DTO
                 TripSearchResponse dto = TripSearchResponse.builder()
                         .id(trip.getId().toString())
                         .busId(bus.getId().toString())
@@ -103,7 +119,7 @@ public class TripServiceImpl implements ITripService {
             }
         }
 
-        // Sắp xếp danh sách kết quả
+        // Sort results
         String sortBy = Optional.ofNullable(request.getSortBy()).orElse("departureTime");
         String sortOrder = Optional.ofNullable(request.getSortOrder()).orElse("asc");
 

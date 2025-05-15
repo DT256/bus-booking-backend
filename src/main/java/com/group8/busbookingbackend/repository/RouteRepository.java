@@ -13,7 +13,10 @@ public interface RouteRepository extends MongoRepository<RouteEntity, ObjectId> 
 //    @Query("{ 'startPoint.city': ?0, 'endPoint.city': ?1, 'status': 'ACTIVE' }")
     @Query("{ 'startPoint.city': ?0, 'endPoint.city': ?1, 'status': 'ACTIVE' }")
     List<RouteEntity> findByStartPoint_cityAndEndPoint_city(ObjectId startCity, ObjectId endCity);
-    List<RouteEntity> findByStartPointAndEndPoint(ObjectId startPoint, ObjectId endPoint);
+
+    List<RouteEntity> findByStartPointInAndEndPointInAndStatus(List<ObjectId> startPointIds,
+                                                              List<ObjectId> endPointIds,
+                                                              RouteEntity.RouteStatus status);    List<RouteEntity> findByStartPointAndEndPoint(ObjectId startPoint, ObjectId endPoint);
     List<RouteEntity> findByStartPointAndEndPointAndStatus(ObjectId startPoint, ObjectId endPoint, RouteEntity.RouteStatus status);
     List<RouteEntity> findByStartPointAndEndPointAndStatus(String startPoint, String endPoint, RouteEntity.RouteStatus status);
 }
