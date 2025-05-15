@@ -128,7 +128,10 @@ public class ChatbotServiceImpl implements IChatbotService {
     }
 
     private ChatMessage handleViewBookings(ObjectId userId) {
-        List<BookingEntity> bookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        List<BookingEntity> bookings = bookingRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(booking -> booking.getStatus() != BookingEntity.BookingStatus.CANCELLED)
+                .toList();;
 
         if (bookings.isEmpty()) {
             return ChatMessage.builder()

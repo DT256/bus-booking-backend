@@ -71,7 +71,8 @@ public class BookingServiceImpl implements IBookingService {
                 throw new IllegalArgumentException("Không tìm thấy ghế với tripId: " + tripId + " và seatId: " + seatId);
             }
             seat.setStatus(TripSeatEntity.SeatStatus.BOOKED);
-            tripSeatRepository.save(seat);
+            TripSeatEntity seatsau = tripSeatRepository.save(seat);
+            System.out.println(seatsau);
         }
 
         BookingEntity booking = BookingEntity.builder()
@@ -134,6 +135,7 @@ public class BookingServiceImpl implements IBookingService {
                 TripSeatEntity seat = tripSeatRepository.findByTripIdAndSeatId(booking.getTripId(), seatId);
                 if (seat != null) {
                     seat.setStatus(TripSeatEntity.SeatStatus.AVAILABLE);
+                    System.out.println("o cancal " + seat.getId());
                     tripSeatRepository.save(seat);
                 }
             }

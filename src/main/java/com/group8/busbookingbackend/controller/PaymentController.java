@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -36,34 +37,69 @@ public class PaymentController {
     }
 
     @GetMapping("/vn-pay-callback")
-    public ResponseEntity<ApiResponse<String>> bankPayCallbackHandler(HttpServletRequest request) {
+    public ResponseEntity<?> bankPayCallbackHandler(HttpServletRequest request) {
         System.out.println("bankPayCallbackHandler");
+
+        // Retrieve query parameters
         String status = request.getParameter("vnp_ResponseCode");
         String transactionNo = request.getParameter("vnp_TransactionNo");
         String bankCode = request.getParameter("vnp_BankCode");
         String transactionStatus = request.getParameter("vnp_TransactionStatus");
-        BigDecimal amount = new BigDecimal(request.getParameter("vnp_Amount"))
-                .divide(BigDecimal.valueOf(100));
-
+        String amountStr = request.getParameter("vnp_Amount");
         String payDate = request.getParameter("vnp_PayDate");
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-        LocalDateTime localDateTime = LocalDateTime.parse(payDate, formatter);
-        System.out.println(request.getParameter("orderid"));
-        ObjectId bookingId = new ObjectId(request.getParameter("orderid"));
+        String orderId = request.getParameter("orderid");
+
+        // Validate required parameters
+        if (orderId == null || status == null) {
+            return ResponseEntity.badRequest().body("Missing required parameters.");
+        }
+
+        // Parse amount
+        BigDecimal amount;
+        try {
+            amount = new BigDecimal(amountStr).divide(BigDecimal.valueOf(100));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().body("Invalid amount format.");
+        }
+
+        // Parse pay date
+        LocalDateTime localDateTime;
+        try {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+            localDateTime = LocalDateTime.parse(payDate, formatter);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Invalid pay date format.");
+        }
+
+        // Parse booking ID
+        ObjectId bookingId;
+        try {
+            bookingId = new ObjectId(orderId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid booking ID format.");
+        }
 
         System.out.println("bookingId: " + bookingId);
-        System.out.println("bookingId: " + bankCode);
+        System.out.println("bankCode: " + bankCode);
 
-        if (status.equals("00")) {
+        // Process payment and redirect
+        String redirectUrl;
+        if ("00".equals(status)) {
+            // Handle successful payment
             paymentService.handlePayBank(transactionNo, bankCode, transactionStatus, localDateTime, amount, bookingId);
-
-            // Trả về response thành công
-            ApiResponse<String> response = ApiResponse.success("Thanh toán thành công", "Đơn hàng đã thanh toán thành công.");
-            return ResponseEntity.ok(response); // Trả về 200 OK với message thành công
+            redirectUrl = "yourapp://ticket?bookingId=" + orderId + "&status=success";
         } else {
-            // Trả về response lỗi
-            ApiResponse<String> response = ApiResponse.error(400, "Thanh toán thất bại", "Vui lòng thử lại sau.");
-            return ResponseEntity.badRequest().body(response); // Trả về 400 Bad Request với message lỗi
+            // Handle failed payment
+            redirectUrl = "yourapp://ticket?bookingId=" + orderId + "&status=failure";
+        }
+
+        // Redirect to deep link
+        try {
+            return ResponseEntity.status(HttpStatus.FOUND)
+                    .location(URI.create(redirectUrl))
+                    .build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid redirect URL.");
         }
     }
 }

@@ -8,6 +8,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Component
@@ -21,13 +24,21 @@ public class BookingExpirationScheduler {
 
     @Scheduled(fixedRate = 60000) // Chạy mỗi 1 phút
     public void checkExpiredBookings() {
+        ZoneId zoneId = ZoneId.of("Asia/Ho_Chi_Minh");
+        ZonedDateTime now = ZonedDateTime.now(zoneId);
+
         List<BookingEntity> pendingBookings = bookingRepository.findAll().stream()
                 .filter(b -> b.getPaymentStatus() == BookingEntity.PaymentStatus.PENDING)
-                .filter(b -> b.getCreatedAt().plusMinutes(30).isBefore(LocalDateTime.now()))
+                .filter(b -> b.getCreatedAt()
+                        .atZone(ZoneOffset.UTC) // assume Mongo stores in UTC
+                        .withZoneSameInstant(zoneId) // convert to local time
+                        .plusMinutes(30)
+                        .isBefore(now))
                 .toList();
 
         for (BookingEntity booking : pendingBookings) {
             bookingService.cancelExpiredBooking(booking.getBookingCode());
         }
     }
+
 }
