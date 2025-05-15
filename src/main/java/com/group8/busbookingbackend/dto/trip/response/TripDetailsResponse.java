@@ -12,6 +12,7 @@ public class TripDetailsResponse {
     private String licensePlate;
     private int capacity;
     private LocalDateTime departureTime;
+    private LocalDateTime arrivalTime;
     private double price;
     private String status;
     private String startPointCity;
