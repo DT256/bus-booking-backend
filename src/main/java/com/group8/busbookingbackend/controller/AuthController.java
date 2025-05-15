@@ -4,6 +4,7 @@ import com.group8.busbookingbackend.dto.ApiResponse;
 import com.group8.busbookingbackend.dto.auth.request.UserCreateRequest;
 import com.group8.busbookingbackend.dto.auth.request.UserLoginRequest;
 import com.group8.busbookingbackend.dto.auth.response.AuthResponse;
+import com.group8.busbookingbackend.dto.auth.response.LoginResponse;
 import com.group8.busbookingbackend.dto.user.response.UserResponse;
 import com.group8.busbookingbackend.service.IAuthService;
 import com.group8.busbookingbackend.service.IEmailService;
@@ -42,10 +43,10 @@ public class AuthController {
 
     // Đăng nhập
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@RequestBody @Valid UserLoginRequest request) {
-        AuthResponse authResponse = authService.login(request);
+    public ResponseEntity<ApiResponse<LoginResponse>> login(@RequestBody @Valid UserLoginRequest request) {
+        LoginResponse authResponse = authService.login(request);
 
-        ApiResponse<AuthResponse> response = new ApiResponse<>();
+        ApiResponse<LoginResponse> response = new ApiResponse<>();
         response.setStatus("success");
         response.setCode(200);
         response.setMessage(authResponse.getMessage());

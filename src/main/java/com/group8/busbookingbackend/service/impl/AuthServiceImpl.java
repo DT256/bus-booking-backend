@@ -3,6 +3,7 @@ package com.group8.busbookingbackend.service.impl;
 import com.group8.busbookingbackend.dto.auth.request.UserCreateRequest;
 import com.group8.busbookingbackend.dto.auth.request.UserLoginRequest;
 import com.group8.busbookingbackend.dto.auth.response.AuthResponse;
+import com.group8.busbookingbackend.dto.auth.response.LoginResponse;
 import com.group8.busbookingbackend.entity.Role;
 import com.group8.busbookingbackend.entity.User;
 import com.group8.busbookingbackend.entity.UserStatus;
@@ -62,7 +63,7 @@ public class AuthServiceImpl implements IAuthService {
 
     // Đăng nhập
     @Override
-    public AuthResponse login(UserLoginRequest request) {
+    public LoginResponse login(UserLoginRequest request) {
         User user = userService.findUserByEmail(request.getEmail());
 
 
@@ -77,7 +78,7 @@ public class AuthServiceImpl implements IAuthService {
             throw new AppException(ErrorCode.PASSWORD_INVALID);
         }
         String token = JwtProvider.generateJwtToken(user);
-        return new AuthResponse(token, "Đăng nhập thành công");
+        return new LoginResponse(token, "Đăng nhập thành công",user.getUsername());
     }
 
     // Kích hoạt tài khoản qua OTP
